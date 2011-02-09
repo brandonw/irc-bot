@@ -6,9 +6,12 @@
 #include <netdb.h>
 #include <string.h>
 #include <stdarg.h>
+#include <glib.h>
 
 #define   DEFAULT_PORT    "6667"
 #define   IRC_BUF_LENGTH  513
+#define   MAX_NICK_LENGTH 50
+#define   MAX_NICKS       1000
 
 struct irc_message {
   char prefix[IRC_BUF_LENGTH];
@@ -28,8 +31,12 @@ struct irc_message *create_message(char *prefix,
                                    ...);
 void free_message(struct irc_message *message);
 int send_nick_user();
+struct irc_message *create_response(struct irc_message *msg);
+int load_karma();
+int save_karma();
 
 int sockfd;
+GHashTable *karma_hash;
 
 int main(int argc, char *argv[]) {
 
@@ -85,21 +92,69 @@ int main(int argc, char *argv[]) {
         free_message(out_msg);
         has_joined = 1;
       }
-    } else if (strcmp(inc_msg->command, "PRIVMSG") == 0) {
-
-    } else if (strcmp(inc_msg->command, "JOIN") == 0 &&
-               strcmp(inc_msg->params, ":#triangle") == 0) {
-      char *nickname = strtok(inc_msg->prefix, "!");
-      out_msg = create_message(NULL, "MODE", 3, "#triangle", "+O", nickname);
-      send_msg(out_msg);
-      free_message(out_msg);
+    } else {
+      out_msg = create_response(inc_msg);
+      if (out_msg != NULL) {
+        send_msg(out_msg);
+        free_message(out_msg);
+      }
     }
-
     free_message(inc_msg);
     bytes_rcved = recv_msg(&inc_msg);
   } while (bytes_rcved > 0 && inc_msg != NULL);
 
   shutdown(sockfd, SHUT_RDWR);
+}
+
+int load_karma() {
+  karma_hash = g_hash_table_new(NULL, NULL);
+  FILE *fp = fopen("karma.txt", "r");
+  char nick[MAX_NICK_LENGTH];
+  int karma;
+  char *n;
+  int *k;
+  while (fscanf(fp, "%s\t%d\n", nick, &karma) != EOF) {
+    n = (char*)malloc(strlen(nick)+1);
+    k = (int*)malloc(sizeof(int));
+    strcpy(n, nick);
+    *k = karma;
+    g_hash_table_insert(karma_hash, (gpointer)n, (gpointer)k);
+  }
+  fclose(fp);
+}
+
+int save_karma() {
+  GList *keys = g_hash_table_get_keys(karma_hash);
+  FILE *fp = fopen("karma.txt", "w");
+  char *nick;
+  int *karma;
+  while (keys != NULL) {
+    karma = (int*)g_hash_table_lookup(karma_hash, (char*)keys->data);
+    fprintf(fp, "%s\t%d\n", nick, *karma);
+    g_hash_table_remove(karma_hash, (gconstpointer)keys->data);
+    free(nick);
+    free(karma);
+  }
+  g_hash_table_destroy(karma_hash);
+  fclose(fp);
+}
+
+struct irc_message *create_response(struct irc_message *msg) {
+  struct irc_message *response = NULL;
+  if (strcmp(msg->command, "JOIN") == 0) {
+    char *nickname = strtok(msg->prefix, "!");
+    if (strcmp(nickname+1, nick) != 0)
+      response = create_message(NULL, 
+                                "PRIVMSG", 
+                                3, 
+                                "#triangle", 
+                                ":Hi", 
+                                nickname+1);
+
+  } else if (strcmp(msg->command, "PRIVMSG") == 0) {
+
+  }
+  return response;
 }
 
 int send_nick_user() {
@@ -155,7 +210,6 @@ int send_msg(struct irc_message *message) {
   }
 
   sprintf(buf+idx, "\r\n");
-
   return send(sockfd, (void*)buf, strlen(buf), 0);
 }
 
