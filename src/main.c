@@ -37,11 +37,13 @@ int save_karma();
 
 int sockfd;
 GHashTable *karma_hash;
+int keep_alive;
 
 int main(int argc, char *argv[]) {
 
   int err, opt, aflag, cflag, nflag;
   err = opt = aflag = cflag = nflag = 0;
+  keep_alive = 1;
 
   while ((opt = getopt(argc, argv, "a:c:n:")) != -1) {
     switch (opt) {
@@ -70,6 +72,8 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "and # typically being special characters.\n");
     exit(EXIT_FAILURE);
   }
+
+  load_karma();
 
   sockfd = connect_to_server(address);
   send_nick_user();
@@ -101,13 +105,18 @@ int main(int argc, char *argv[]) {
     }
     free_message(inc_msg);
     bytes_rcved = recv_msg(&inc_msg);
-  } while (bytes_rcved > 0 && inc_msg != NULL);
+  } while (keep_alive && bytes_rcved > 0 && inc_msg != NULL);
+
+  if (inc_msg != NULL) {
+    free_message(inc_msg);
+  }
 
   shutdown(sockfd, SHUT_RDWR);
+  save_karma();
 }
 
 int load_karma() {
-  karma_hash = g_hash_table_new(NULL, NULL);
+  karma_hash = g_hash_table_new(g_str_hash, g_str_equal);
   FILE *fp = fopen("karma.txt", "r");
   char nick[MAX_NICK_LENGTH];
   int karma;
@@ -124,34 +133,50 @@ int load_karma() {
 }
 
 int save_karma() {
-  GList *keys = g_hash_table_get_keys(karma_hash);
+  GList *key_list = g_hash_table_get_keys(karma_hash);
+  GList *keys = key_list;
   FILE *fp = fopen("karma.txt", "w");
   char *nick;
   int *karma;
   while (keys != NULL) {
-    karma = (int*)g_hash_table_lookup(karma_hash, (char*)keys->data);
+    nick = (char*)keys->data;
+    karma = (int*)g_hash_table_lookup(karma_hash, (gconstpointer)nick);
     fprintf(fp, "%s\t%d\n", nick, *karma);
-    g_hash_table_remove(karma_hash, (gconstpointer)keys->data);
+    g_hash_table_remove(karma_hash, (gconstpointer)nick);
     free(nick);
     free(karma);
+    keys = g_list_next(keys);
   }
+  g_list_free(key_list);
   g_hash_table_destroy(karma_hash);
   fclose(fp);
 }
 
 struct irc_message *create_response(struct irc_message *msg) {
   struct irc_message *response = NULL;
-  if (strcmp(msg->command, "JOIN") == 0) {
+  /*if (strcmp(msg->command, "JOIN") == 0) {
     char *nickname = strtok(msg->prefix, "!");
+    char *channel = strtok(msg->params, " ")+1;
     if (strcmp(nickname+1, nick) != 0)
       response = create_message(NULL, 
                                 "PRIVMSG", 
                                 3, 
-                                "#triangle", 
+                                channel, 
                                 ":Hi", 
                                 nickname+1);
 
-  } else if (strcmp(msg->command, "PRIVMSG") == 0) {
+  } else*/ if (strcmp(msg->command, "PRIVMSG") == 0) {
+    char *nickname = strtok(msg->prefix, "!")+1;
+    char *channel = strtok(msg->params, " ")+1; 
+    char *message = strtok(NULL, "")+1;
+    if (strcmp(nickname, "brandonw") == 0 &&
+        strcmp(message, "@QUIT") == 0) {
+      keep_alive = 0;
+      response = create_message(NULL, "QUIT", 0);
+      int *t = (int*)g_hash_table_lookup(karma_hash, "brandonw");
+      (*t)++;
+
+    }
 
   }
   return response;
@@ -210,6 +235,9 @@ int send_msg(struct irc_message *message) {
   }
 
   sprintf(buf+idx, "\r\n");
+
+  /*printf("%s", buf);*/
+
   return send(sockfd, (void*)buf, strlen(buf), 0);
 }
 
@@ -224,6 +252,8 @@ int recv_msg(struct irc_message **message) {
   
   if (bytes_rcved <= 0)
     return bytes_rcved;
+
+  /*printf("%s", buf);*/
 
   char *prefix, *command, *params;
   prefix = command = params = NULL;
