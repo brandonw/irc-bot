@@ -10,8 +10,7 @@
 
 #define   DEFAULT_PORT    "6667"
 #define   IRC_BUF_LENGTH  513
-#define   MAX_NICK_LENGTH 50
-#define   MAX_NICKS       1000
+#define   MAX_NICK_LENGTH 500
 
 struct irc_message 
 {
