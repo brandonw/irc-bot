@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <glib.h>
+#include <dlfcn.h>
 
 #define   DEFAULT_PORT    "6667"
 #define   IRC_BUF_LENGTH  513
@@ -71,8 +72,9 @@ int main(int argc, char *argv[])
   {
     fprintf(stderr, "Usage: %s -a address[:port] -c channel -n nick\n",
             argv[0]);
-    fprintf(stderr, "Make sure to quote the address and channel, due to :\n");
-    fprintf(stderr, "and # typically being special characters.\n");
+    fprintf(stderr, "Make sure to quote the address and channel, due to ");
+    fprintf(stderr, "`:' and `#' typically\n");
+    fprintf(stderr, "being special characters.\n");
     exit(EXIT_FAILURE);
   }
 
