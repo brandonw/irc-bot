@@ -1,89 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
-#include <stdarg.h>
-#include <glib.h>
-#include <dlfcn.h>
 
-#define   DEFAULT_PORT    "6667"
-#define   IRC_BUF_LENGTH  513
-#define   MAX_NICK_LENGTH 500
-
-struct irc_message 
-{
-  char prefix[IRC_BUF_LENGTH];
-  char command[IRC_BUF_LENGTH];
-  char params[IRC_BUF_LENGTH];
-};
-
-char *address, *channel, *nick;
+#include "bot.h"
 
 int getaddr (struct addrinfo **result, char *address);
 int connect_to_server(char *address);
 int send_msg(struct irc_message *message);
 int recv_msg(struct irc_message **message);
-struct irc_message *create_message(char *prefix, 
-                                   char *command, 
-                                   char *params);
-void free_message(struct irc_message *message);
-int send_nick_user();
-struct irc_message *create_response(struct irc_message *msg);
-int load_karma();
-int save_karma();
-
 int sockfd;
-GHashTable *karma_hash;
-int keep_alive;
 
-int main(int argc, char *argv[]) 
+void free_message(struct irc_message *message);
+int process_message(struct irc_message *msg);
+
+
+int run_bot(char *address, char *nick, char *channel) 
 {
-
-  int err, opt, aflag, cflag, nflag;
-  err = opt = aflag = cflag = nflag = 0;
-  keep_alive = 1;
-
-  while ((opt = getopt(argc, argv, "a:c:n:")) != -1) 
-  {
-    switch (opt) 
-    {
-      case 'a':
-        address = optarg;
-        aflag = 1;
-        break;
-      case 'c':
-        channel = optarg;
-        cflag = 1;
-        break;
-      case 'n':
-        nick = optarg;
-        nflag = 1;
-        break;
-      default:
-        err = 1;
-        break;
-    }
-  }
-
-  if (err || !aflag || !cflag || !nflag) 
-  {
-    fprintf(stderr, "Usage: %s -a address[:port] -c channel -n nick\n",
-            argv[0]);
-    fprintf(stderr, "Make sure to quote the address and channel, due to ");
-    fprintf(stderr, "`:' and `#' typically\n");
-    fprintf(stderr, "being special characters.\n");
-    exit(EXIT_FAILURE);
-  }
-
-  load_karma();
-
   sockfd = connect_to_server(address);
-  send_nick_user();
 
-  int has_joined = 0;
   int bytes_rcved = 0;
   struct irc_message *inc_msg;
   struct irc_message *out_msg;
@@ -91,27 +28,11 @@ int main(int argc, char *argv[])
   bytes_rcved = recv_msg(&inc_msg);
   do 
   {
-    if (strcmp(inc_msg->command, "PING") == 0) 
+    process_message(inc_msg);
+    if (out_msg != NULL) 
     {
-      out_msg = create_message(NULL, "PONG", inc_msg->params);
       send_msg(out_msg);
       free_message(out_msg);
-
-      if (!has_joined) 
-      {
-        out_msg = create_message(NULL, "JOIN", channel);
-        send_msg(out_msg);
-        free_message(out_msg);
-        has_joined = 1;
-      }
-    } else 
-    {
-      out_msg = create_response(inc_msg);
-      if (out_msg != NULL) 
-      {
-        send_msg(out_msg);
-        free_message(out_msg);
-      }
     }
     free_message(inc_msg);
     bytes_rcved = recv_msg(&inc_msg);
@@ -123,128 +44,11 @@ int main(int argc, char *argv[])
   }
 
   shutdown(sockfd, SHUT_RDWR);
-  save_karma();
 }
 
-int load_karma() 
+int process_message(struct irc_message *msg) 
 {
-  karma_hash = g_hash_table_new(g_str_hash, g_str_equal);
-  FILE *fp = fopen("karma.txt", "r");
-  char nick[MAX_NICK_LENGTH];
-  int karma;
-  char *n;
-  int *k;
-  while (fscanf(fp, "%s\t%d\n", nick, &karma) != EOF) 
-  {
-    n = (char*)malloc(strlen(nick)+1);
-    k = (int*)malloc(sizeof(int));
-    strcpy(n, nick);
-    *k = karma;
-    g_hash_table_insert(karma_hash, (gpointer)n, (gpointer)k);
-  }
-  fclose(fp);
-}
 
-int save_karma() 
-{
-  GList *key_list = g_hash_table_get_keys(karma_hash);
-  GList *keys = key_list;
-  FILE *fp = fopen("karma.txt", "w");
-  char *nick;
-  int *karma;
-  while (keys != NULL) 
-  {
-    nick = (char*)keys->data;
-    karma = (int*)g_hash_table_lookup(karma_hash, (gconstpointer)nick);
-    fprintf(fp, "%s\t%d\n", nick, *karma);
-    g_hash_table_remove(karma_hash, (gconstpointer)nick);
-    free(nick);
-    free(karma);
-    keys = g_list_next(keys);
-  }
-  g_list_free(key_list);
-  g_hash_table_destroy(karma_hash);
-  fclose(fp);
-}
-
-struct irc_message *create_response(struct irc_message *msg) 
-{
-  struct irc_message *response = NULL;
-  if (strcmp(msg->command, "PRIVMSG") == 0) 
-  {
-    char *nickname = strtok(msg->prefix, "!")+1;
-    char *channel = strtok(msg->params, " "); 
-    char *message = strtok(NULL, "")+1;
-    char buf[IRC_BUF_LENGTH];
-    char *tok = strtok(message, " ");
-    if (strcmp(tok, "!QUIT") == 0 && strcmp(nickname, "brandonw") == 0) 
-    {
-      keep_alive = 0;
-      response = create_message(NULL, "QUIT", NULL);
-    } else if (strcmp(tok, "!karma") == 0) 
-    {
-      tok = strtok(NULL, " ");
-      int* karma = (int*)g_hash_table_lookup(karma_hash, tok);
-      int k = 0;
-      if (karma != NULL) 
-      {
-        k = *karma;
-      }
-
-      sprintf(buf, "%s :%s has %d karma", channel, tok, k);
-      response = create_message(NULL, "PRIVMSG", buf);
-    } else if (strcmp(tok, "!up") == 0) 
-    {
-      tok = strtok(NULL, " ");
-      int* karma = (int*)g_hash_table_lookup(karma_hash, tok);
-      if (karma == NULL) 
-      {
-        karma = malloc(sizeof(int));
-        *karma = 0;
-        nick = malloc(strlen(tok)+1);
-        strcpy(nick, tok);
-        g_hash_table_insert(karma_hash, nick, karma);
-      }
-      (*karma)++;
-
-      sprintf(buf, "%s :%s has been upvoted to %d karma",
-              channel, tok, *karma);
-      response = create_message(NULL, "PRIVMSG", buf);
-    } else if (strcmp(tok, "!down") == 0) 
-    {
-      tok = strtok(NULL, " ");
-      int* karma = (int*)g_hash_table_lookup(karma_hash, tok);
-      if (karma == NULL) 
-      {
-        karma = malloc(sizeof(int));
-        *karma = 0;
-        nick = malloc(strlen(tok)+1);
-        strcpy(nick, tok);
-        g_hash_table_insert(karma_hash, nick, karma);
-      }
-      (*karma)--;
-
-      sprintf(buf, "%s :%s has been downvoted to %d karma",
-              channel, tok, *karma);
-      response = create_message(NULL, "PRIVMSG", buf);
-    }
-  }
-  return response;
-}
-
-int send_nick_user() 
-{
-  struct irc_message *nick_msg = create_message(NULL, "NICK", nick);
-  send_msg(nick_msg);
-  free_message(nick_msg);
-
-  char buf[IRC_BUF_LENGTH];
-  sprintf(buf, "USER %s %s 8 * : %s", nick, nick, nick);
-  struct irc_message *user_msg = create_message(NULL, "USER", buf);
-  send_msg(user_msg);
-  free_message(user_msg);
-
-  return 0;
 }
 
 int connect_to_server(char *address) 
