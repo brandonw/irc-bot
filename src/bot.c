@@ -4,8 +4,12 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
+#include <dlfcn.h>
+#include <dirent.h>
 
 #include "bot.h"
+
+int keep_alive = 1;
 
 int getaddr (struct addrinfo **result, char *address);
 int connect_to_server(char *address);
@@ -16,9 +20,66 @@ int sockfd;
 void free_message(struct irc_message *message);
 int process_message(struct irc_message *msg);
 
+struct plugin {
+  void *handle;
+  char *command;
+  int (*create_response)(char*, char*, struct irc_message*, int*);
+  int (*initialize);
+  int (*close);
+};
+static struct plugin plugins[MAX_PLUGINS];
+static int num_of_plugins = 0;
+
+int load_plugins()
+{
+  struct dirent **namelist;
+  int n;
+
+  n = scandir("plugins", &namelist, 0, alphasort);
+  if (n < 0) {
+    perror("scandir");
+    exit(EXIT_FAILURE);
+  }
+  else {
+    while (n--) {
+      printf("%s\n", namelist[n]->d_name);
+
+      char location[100] = "plugins/";
+      strcpy(location+8, namelist[n]->d_name);
+
+      plugins[num_of_plugins].handle = dlopen(location, RTLD_LAZY);
+      if (!plugins[num_of_plugins].handle) {
+        fprintf(stderr, "%s\n", dlerror());
+        exit(EXIT_FAILURE);
+      }
+      dlerror();
+
+      plugins[num_of_plugins].command = 
+          (char*)dlsym(plugins[num_of_plugins].handle, "command");
+      *(void **) (&(plugins[num_of_plugins].create_response)) = 
+          dlsym(plugins[num_of_plugins].handle, "create_response");
+      *(void **) (&(plugins[num_of_plugins].initialize)) = 
+          dlsym(plugins[num_of_plugins].handle, "initialize");
+      *(void **) (&(plugins[num_of_plugins].close)) = 
+          dlsym(plugins[num_of_plugins].handle, "close");
+
+      free(namelist[n]);
+
+      /* only count this as a valid plugin if both create_response
+       * and command were found */
+      if (plugins[num_of_plugins].create_response != NULL &&
+          plugins[num_of_plugins].command != NULL) {
+        num_of_plugins++;
+
+      }
+    }
+  }
+}
 
 int run_bot(char *address, char *nick, char *channel) 
 {
+  load_plugins();
+  return 0;
   sockfd = connect_to_server(address);
 
   int bytes_rcved = 0;
@@ -44,6 +105,8 @@ int run_bot(char *address, char *nick, char *channel)
   }
 
   shutdown(sockfd, SHUT_RDWR);
+
+  /* TODO: close the references opened in dlopen */
 }
 
 int process_message(struct irc_message *msg) 

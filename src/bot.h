@@ -6,9 +6,11 @@
 #define   IRC_BUF_LENGTH      513
 #define   MAX_NICK_LENGTH     500
 #define   MAX_RESPONSE_MSGES  10
+#define   MAX_PLUGINS         50
 
-char *address, *channel, *nick;
-int keep_alive = 1;
+extern char *address, *channel, *nick;
+extern int keep_alive;
+
 
 /*
  * Message and struct functions
@@ -37,6 +39,11 @@ struct irc_message *create_message(char *prefix,
  * Run bot.
  */
 int run_bot();
+
+/*
+ * Load plugins.
+ */
+int load_plugins();
 
 
 #endif /* end of include guard: BOT_H */

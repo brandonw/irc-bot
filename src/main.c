@@ -3,6 +3,10 @@
 #include <unistd.h>
 #include "bot.h"
 
+char *address = NULL;
+char *channel = NULL;
+char *nick = NULL;
+
 int main(int argc, char *argv[]) 
 {
   int err, opt, aflag, cflag, nflag;
