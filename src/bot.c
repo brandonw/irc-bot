@@ -11,38 +11,61 @@
 
 int keep_alive = 1;
 
-int getaddr (struct addrinfo **result, char *address);
-int connect_to_server(char *address);
+int getaddr (struct addrinfo **result);
+int connect_to_server();
 int send_msg(struct irc_message *message);
 int recv_msg(struct irc_message **message);
 int sockfd;
 
 void free_message(struct irc_message *message);
 int process_message(struct irc_message *msg);
+int filter(const struct dirent *);
 
 struct plugin {
   void *handle;
   char *command;
-  int (*create_response)(char*, char*, struct irc_message*, int*);
-  int (*initialize);
-  int (*close);
+  int (*create_response)(char*, char*, 
+                         struct irc_message*[MAX_RESPONSE_MSGES], 
+                         int*);
+  int (*initialize)();
+  int (*close)();
 };
 static struct plugin plugins[MAX_PLUGINS];
 static int num_of_plugins = 0;
+
+int filter(const struct dirent *d) {
+  if (strcmp(d->d_name, "..") == 0 ||
+      strcmp(d->d_name, ".") == 0) {
+    return 0;
+  } else {
+    char n[strlen(d->d_name) + 1];
+    strcpy(n, d->d_name);
+    char *previous, *current;
+    int pieces = 1;
+    previous = strtok(n, ".");
+    while ((current = strtok(NULL, ".")) != NULL) {
+      pieces++;
+      previous = current;
+    }
+    if (pieces > 1 && strcmp(previous, "so") == 0) {
+      return 1;
+    }
+  }
+  return 0;
+}
 
 int load_plugins()
 {
   struct dirent **namelist;
   int n;
 
-  n = scandir("plugins", &namelist, 0, alphasort);
+  n = scandir("plugins", &namelist, &filter, alphasort);
   if (n < 0) {
     perror("scandir");
     exit(EXIT_FAILURE);
   }
   else {
     while (n--) {
-      printf("%s\n", namelist[n]->d_name);
 
       char location[100] = "plugins/";
       strcpy(location+8, namelist[n]->d_name);
@@ -63,24 +86,30 @@ int load_plugins()
       *(void **) (&(plugins[num_of_plugins].close)) = 
           dlsym(plugins[num_of_plugins].handle, "close");
 
-      free(namelist[n]);
-
       /* only count this as a valid plugin if both create_response
        * and command were found */
       if (plugins[num_of_plugins].create_response != NULL &&
           plugins[num_of_plugins].command != NULL) {
         num_of_plugins++;
-
       }
+
+      free(namelist[n]);
     }
+    free(namelist);
   }
 }
 
-int run_bot(char *address, char *nick, char *channel) 
+int run_bot() 
 {
   load_plugins();
-  return 0;
-  sockfd = connect_to_server(address);
+  int p_index;
+  for (p_index = 0; p_index < num_of_plugins; p_index++) {
+    if (plugins[p_index].initialize != NULL) {
+      (*(plugins[p_index].initialize))();
+    }
+  }
+
+  sockfd = connect_to_server();
 
   int bytes_rcved = 0;
   struct irc_message *inc_msg;
@@ -90,11 +119,6 @@ int run_bot(char *address, char *nick, char *channel)
   do 
   {
     process_message(inc_msg);
-    if (out_msg != NULL) 
-    {
-      send_msg(out_msg);
-      free_message(out_msg);
-    }
     free_message(inc_msg);
     bytes_rcved = recv_msg(&inc_msg);
   } while (keep_alive && bytes_rcved > 0 && inc_msg != NULL);
@@ -105,19 +129,44 @@ int run_bot(char *address, char *nick, char *channel)
   }
 
   shutdown(sockfd, SHUT_RDWR);
-
-  /* TODO: close the references opened in dlopen */
+  for (p_index = 0; p_index < num_of_plugins; p_index++) {
+    if (plugins[p_index].close != NULL) {
+      (*(plugins[p_index].close))();
+    }
+    dlclose(plugins[p_index].handle);
+  }
 }
 
 int process_message(struct irc_message *msg) 
 {
+  int p_index;
+  struct irc_message *responses[MAX_RESPONSE_MSGES];
+  int num_of_responses = 0;
+  for (p_index = 0; p_index < num_of_plugins; p_index++) {
+    if (strcmp(plugins[p_index].command, msg->command) == 0) {
+      char prefix[strlen(msg->prefix) + 1];
+      char params[strlen(msg->params) + 1];
+      strcpy(prefix, msg->prefix);
+      strcpy(params, msg->params);
+      (*(plugins[p_index].create_response))(
+          prefix, params, responses, &num_of_responses);
 
+      if (num_of_responses > 0) 
+      {
+        int i;
+        for (i = 0; i < num_of_responses; i++) {
+          send_msg(responses[i]);
+          free_message(responses[i]);
+        }
+      }
+    }
+  }
 }
 
-int connect_to_server(char *address) 
+int connect_to_server() 
 {
   struct addrinfo *addr;
-  getaddr(&addr, address);
+  getaddr(&addr);
 
   int sockfd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
   if (sockfd < 0) 
@@ -161,7 +210,7 @@ int send_msg(struct irc_message *message)
 
   sprintf(buf+idx, "\r\n");
 
-  /*printf("%s", buf);*/
+  /*printf("S:%s", buf);*/
 
   return send(sockfd, (void*)buf, strlen(buf), 0);
 }
@@ -179,7 +228,7 @@ int recv_msg(struct irc_message **message)
   if (bytes_rcved <= 0)
     return bytes_rcved;
 
-  /*printf("%s", buf);*/
+  /*printf("R:%s", buf);*/
 
   char *prefix, *command, *params;
   prefix = command = params = NULL;
@@ -253,7 +302,7 @@ void free_message(struct irc_message *message)
   return;
 }
 
-int getaddr (struct addrinfo **result, char *address) 
+int getaddr (struct addrinfo **result) 
 {
   char addr_cpy[strlen(address)];
   strcpy(addr_cpy, address);
@@ -277,7 +326,7 @@ int getaddr (struct addrinfo **result, char *address)
                   result);
   if (s != 0) 
   {
-    printf("error getting addrinfo");
+    printf("error getting addrinfo\n");
     exit(EXIT_FAILURE);
   }
 

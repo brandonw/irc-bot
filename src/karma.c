@@ -4,12 +4,12 @@
 #include <glib.h>
 #include "bot.h"
 
-GHashTable *karma_hash;
+GHashTable static *karma_hash = NULL;
 
 const char command[] = "PRIVMSG";
 
 int create_response(char *prefix, char *params,
-                    struct irc_message **messages,
+                    struct irc_message *messages[MAX_RESPONSE_MSGES],
                     int *msg_count)
 {
   *msg_count = 0;

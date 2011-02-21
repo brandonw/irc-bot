@@ -7,7 +7,7 @@ int has_sent_nick = 0;
 const char command[] = "NOTICE";
 
 int create_response(char *prefix, char *params,
-                    struct irc_message **messages,
+                    struct irc_message *messages[MAX_RESPONSE_MSGES],
                     int *msg_count)
 {
   *msg_count = 0;
