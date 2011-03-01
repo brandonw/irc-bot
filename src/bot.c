@@ -61,39 +61,38 @@ int load_plugins()
     perror("scandir");
     exit(EXIT_FAILURE);
   }
-  else {
-    while (n--) {
 
-      char location[100] = "plugins/";
-      strcpy(location+8, namelist[n]->d_name);
+  while (n--) {
 
-      plugins[num_of_plugins].handle = dlopen(location, RTLD_LAZY);
-      if (!plugins[num_of_plugins].handle) {
-        fprintf(stderr, "%s\n", dlerror());
-        exit(EXIT_FAILURE);
-      }
-      dlerror();
+    char location[100] = "plugins/";
+    strcpy(location+8, namelist[n]->d_name);
 
-      plugins[num_of_plugins].command = 
-          (char*)dlsym(plugins[num_of_plugins].handle, "command");
-      *(void **) (&(plugins[num_of_plugins].create_response)) = 
-          dlsym(plugins[num_of_plugins].handle, "create_response");
-      *(void **) (&(plugins[num_of_plugins].initialize)) = 
-          dlsym(plugins[num_of_plugins].handle, "initialize");
-      *(void **) (&(plugins[num_of_plugins].close)) = 
-          dlsym(plugins[num_of_plugins].handle, "close");
-
-      /* only count this as a valid plugin if both create_response
-       * and command were found */
-      if (plugins[num_of_plugins].create_response != NULL &&
-          plugins[num_of_plugins].command != NULL) {
-        num_of_plugins++;
-      }
-
-      free(namelist[n]);
+    plugins[num_of_plugins].handle = dlopen(location, RTLD_LAZY);
+    if (!plugins[num_of_plugins].handle) {
+      fprintf(stderr, "%s\n", dlerror());
+      exit(EXIT_FAILURE);
     }
-    free(namelist);
+    dlerror();
+
+    plugins[num_of_plugins].command = 
+        (char*)dlsym(plugins[num_of_plugins].handle, "command");
+    *(void **) (&(plugins[num_of_plugins].create_response)) = 
+        dlsym(plugins[num_of_plugins].handle, "create_response");
+    *(void **) (&(plugins[num_of_plugins].initialize)) = 
+        dlsym(plugins[num_of_plugins].handle, "initialize");
+    *(void **) (&(plugins[num_of_plugins].close)) = 
+        dlsym(plugins[num_of_plugins].handle, "close");
+
+    /* only count this as a valid plugin if both create_response
+     * and command were found */
+    if (plugins[num_of_plugins].create_response != NULL &&
+        plugins[num_of_plugins].command != NULL) {
+      num_of_plugins++;
+    }
+
+    free(namelist[n]);
   }
+  free(namelist);
 }
 
 int run_bot() 
