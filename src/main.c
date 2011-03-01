@@ -45,4 +45,6 @@ int main(int argc, char *argv[])
   }
 
   run_bot();
+
+  return EXIT_SUCCESS;
 }
