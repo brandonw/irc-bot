@@ -97,11 +97,13 @@ int load_plugins()
 
 int run_bot() 
 {
-  load_plugins();
   int p_index;
+
+  load_plugins();
+
   for (p_index = 0; p_index < num_of_plugins; p_index++) {
     if (plugins[p_index].initialize != NULL) {
-      (*(plugins[p_index].initialize))();
+      plugins[p_index].initialize();
     }
   }
 
