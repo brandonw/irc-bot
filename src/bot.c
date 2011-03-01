@@ -30,8 +30,9 @@ struct plugin {
   int (*initialize)();
   int (*close)();
 };
+
 static struct plugin plugins[MAX_PLUGINS];
-static int num_of_plugins = 0;
+static int nplugins = 0;
 
 int filter(const struct dirent *d)
 {
@@ -54,6 +55,7 @@ int filter(const struct dirent *d)
 int load_plugins()
 {
   struct dirent **namelist;
+  void *handle;
   int n;
 
   n = scandir("plugins", &namelist, &filter, alphasort);
@@ -67,31 +69,28 @@ int load_plugins()
     char location[100] = "plugins/";
     strcpy(location+8, namelist[n]->d_name);
 
-    plugins[num_of_plugins].handle = dlopen(location, RTLD_LAZY);
-    if (!plugins[num_of_plugins].handle) {
+	handle = dlopen(location, RTLD_LAZY);
+
+    if (!handle) {
       fprintf(stderr, "%s\n", dlerror());
       exit(EXIT_FAILURE);
     }
-    dlerror();
 
-    plugins[num_of_plugins].command = 
-        (char*)dlsym(plugins[num_of_plugins].handle, "command");
-    *(void **) (&(plugins[num_of_plugins].create_response)) = 
-        dlsym(plugins[num_of_plugins].handle, "create_response");
-    *(void **) (&(plugins[num_of_plugins].initialize)) = 
-        dlsym(plugins[num_of_plugins].handle, "initialize");
-    *(void **) (&(plugins[num_of_plugins].close)) = 
-        dlsym(plugins[num_of_plugins].handle, "close");
+	plugins[nplugins].handle = handle;
+
+    plugins[nplugins].command = (char*)dlsym(handle, "command");
+    plugins[nplugins].create_response = dlsym(handle, "create_response");
+	plugins[nplugins].initialize = dlsym(handle, "initialize");
+    plugins[nplugins].close = dlsym(handle, "close");
 
     /* only count this as a valid plugin if both create_response
      * and command were found */
-    if (plugins[num_of_plugins].create_response != NULL &&
-        plugins[num_of_plugins].command != NULL) {
-      num_of_plugins++;
-    }
+    if (plugins[nplugins].create_response  && plugins[nplugins].command)
+      nplugins++;
 
     free(namelist[n]);
   }
+
   free(namelist);
 }
 
@@ -101,10 +100,9 @@ int run_bot()
 
   load_plugins();
 
-  for (p_index = 0; p_index < num_of_plugins; p_index++) {
-    if (plugins[p_index].initialize != NULL) {
+  for (p_index = 0; p_index < nplugins; p_index++) {
+    if (plugins[p_index].initialize)
       plugins[p_index].initialize();
-    }
   }
 
   sockfd = connect_to_server();
@@ -127,7 +125,7 @@ int run_bot()
   }
 
   shutdown(sockfd, SHUT_RDWR);
-  for (p_index = 0; p_index < num_of_plugins; p_index++) {
+  for (p_index = 0; p_index < nplugins; p_index++) {
     if (plugins[p_index].close != NULL) {
       (*(plugins[p_index].close))();
     }
@@ -140,7 +138,7 @@ int process_message(struct irc_message *msg)
   int p_index;
   struct irc_message *responses[MAX_RESPONSE_MSGES];
   int num_of_responses = 0;
-  for (p_index = 0; p_index < num_of_plugins; p_index++) {
+  for (p_index = 0; p_index < nplugins; p_index++) {
     if (strcmp(plugins[p_index].command, msg->command) == 0) {
       char prefix[strlen(msg->prefix) + 1];
       char params[strlen(msg->params) + 1];
