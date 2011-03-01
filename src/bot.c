@@ -33,25 +33,22 @@ struct plugin {
 static struct plugin plugins[MAX_PLUGINS];
 static int num_of_plugins = 0;
 
-int filter(const struct dirent *d) {
-  if (strcmp(d->d_name, "..") == 0 ||
-      strcmp(d->d_name, ".") == 0) {
-    return 0;
-  } else {
-    char n[strlen(d->d_name) + 1];
-    strcpy(n, d->d_name);
-    char *previous, *current;
-    int pieces = 1;
-    previous = strtok(n, ".");
-    while ((current = strtok(NULL, ".")) != NULL) {
-      pieces++;
-      previous = current;
-    }
-    if (pieces > 1 && strcmp(previous, "so") == 0) {
-      return 1;
-    }
-  }
-  return 0;
+int filter(const struct dirent *d)
+{
+	int len;
+
+	if(strcmp(d->d_name, "..") == 0 || strcmp(d->d_name, ".") == 0)
+		return 0;
+
+	len = strlen(d->d_name);
+
+	if(len < 4)
+		return 0;
+
+	if(strcmp(d->d_name + len - 3, ".so") == 0)
+		return 1;
+	
+	return 0;
 }
 
 int load_plugins()
