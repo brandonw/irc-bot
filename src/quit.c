@@ -4,13 +4,11 @@
 
 const char command[] = "PRIVMSG";
 
-int create_response(char *prefix, char *params,
-                    struct irc_message *messages[MAX_RESPONSE_MSGES],
-                    int *msg_count)
+int create_response(struct irc_message *msg, struct irc_message **messages, int *msg_count)
 {
   *msg_count = 0;
-  char *msg_nick = strtok(prefix, "!")+1;
-  char *msg_channel = strtok(params, " "); 
+  char *msg_nick = strtok(msg->prefix, "!")+1;
+  char *msg_channel = strtok(msg->params, " "); 
   char *msg_message = strtok(NULL, "")+1;
   char buf[IRC_BUF_LENGTH];
   char *tok = strtok(msg_message, " ");

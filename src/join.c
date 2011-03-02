@@ -5,9 +5,7 @@
 int has_joined = 0;
 const char command[] = "MODE";
 
-int create_response(char *prefix, char *params,
-                    struct irc_message *messages[MAX_RESPONSE_MSGES],
-                    int *msg_count)
+int create_response(struct irc_message *msg, struct irc_message **messages, int *msg_count)
 {
   if (!has_joined) {
     has_joined = 1;
