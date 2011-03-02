@@ -4,11 +4,9 @@
 
 const char command[] = "PING";
 
-int create_response(char *prefix, char *params,
-                    struct irc_message *messages[MAX_RESPONSE_MSGES],
-                    int *msg_count)
+int create_response(struct irc_message *msg, struct irc_message **messages, int *msg_count)
 {
-  messages[0] = create_message(NULL, "PONG", params);
+  messages[0] = create_message(NULL, "PONG", msg->params);
   *msg_count = 1;
   return 0;
 }

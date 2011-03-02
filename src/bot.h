@@ -22,9 +22,9 @@ extern int keep_alive;
  */
 struct irc_message 
 {
-  char prefix[IRC_BUF_LENGTH];
-  char command[IRC_BUF_LENGTH];
-  char params[IRC_BUF_LENGTH];
+  char *prefix;
+  char *command;
+  char *params;
 };
 
 /*
@@ -38,12 +38,12 @@ struct irc_message *create_message(char *prefix,
 /*
  * Run bot.
  */
-int run_bot();
+void run_bot();
 
 /*
  * Load plugins.
  */
-int load_plugins();
+void load_plugins();
 
 
 #endif /* end of include guard: BOT_H */
