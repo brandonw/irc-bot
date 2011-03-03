@@ -11,7 +11,7 @@
 
 int keep_alive = 1;
 
-int getaddr (struct addrinfo **result);
+int getaddr(struct addrinfo **result);
 int connect_to_server();
 int send_msg(struct irc_message *message);
 int recv_msg(struct irc_message **message);
@@ -22,11 +22,12 @@ void process_message(struct irc_message *msg);
 int filter(const struct dirent *);
 
 struct plugin {
-  void *handle;
-  char *command;
-  int (*create_response)(struct irc_message *, struct irc_message **, int *);
-  int (*initialize)();
-  int (*close)();
+	void *handle;
+	char *command;
+	int (*create_response) (struct irc_message *, struct irc_message **,
+				int *);
+	int (*initialize) ();
+	int (*close) ();
 };
 
 static struct plugin plugins[MAX_PLUGINS];
@@ -36,311 +37,292 @@ int filter(const struct dirent *d)
 {
 	int len;
 
-	if(strcmp(d->d_name, "..") == 0 || strcmp(d->d_name, ".") == 0)
+	if (strcmp(d->d_name, "..") == 0 || strcmp(d->d_name, ".") == 0)
 		return 0;
 
 	len = strlen(d->d_name);
 
-	if(len < 4)
+	if (len < 4)
 		return 0;
 
-	if(strcmp(d->d_name + len - 3, ".so") == 0)
+	if (strcmp(d->d_name + len - 3, ".so") == 0)
 		return 1;
-	
+
 	return 0;
 }
 
 void load_plugins()
 {
-  struct dirent **namelist;
-  void *handle;
-  int n;
+	struct dirent **namelist;
+	void *handle;
+	int n;
 
-  n = scandir("plugins", &namelist, &filter, alphasort);
-  if (n < 0) {
-    perror("scandir");
-    exit(EXIT_FAILURE);
-  }
-
-  while (n--) {
-
-    char location[100] = "plugins/";
-    strcpy(location+8, namelist[n]->d_name);
-
-	handle = dlopen(location, RTLD_LAZY);
-
-    if (!handle) {
-      fprintf(stderr, "%s\n", dlerror());
-      exit(EXIT_FAILURE);
-    }
-
-	plugins[nplugins].handle = handle;
-
-    plugins[nplugins].command = (char *)dlsym(handle, "command");
-    plugins[nplugins].create_response = dlsym(handle, "create_response");
-	plugins[nplugins].initialize = dlsym(handle, "initialize");
-    plugins[nplugins].close = dlsym(handle, "close");
-
-    /* only count this as a valid plugin if both create_response
-     * and command were found */
-    if (plugins[nplugins].create_response  && plugins[nplugins].command)
-      nplugins++;
-
-    free(namelist[n]);
-  }
-
-  free(namelist);
-}
-
-void run_bot() 
-{
-  int p_index;
-  int bytes_rcved = 0;
-  struct irc_message *inc_msg;
-
-  load_plugins();
-
-  for (p_index = 0; p_index < nplugins; p_index++) {
-    if (plugins[p_index].initialize)
-      plugins[p_index].initialize();
-  }
-
-  sockfd = connect_to_server();
-
-
-  bytes_rcved = recv_msg(&inc_msg);
-  do 
-  {
-    process_message(inc_msg);
-    free_message(inc_msg);
-    bytes_rcved = recv_msg(&inc_msg);
-  } while (keep_alive && bytes_rcved > 0 && inc_msg != NULL);
-
-  if (inc_msg != NULL) 
-  {
-    free_message(inc_msg);
-  }
-
-  shutdown(sockfd, SHUT_RDWR);
-  for (p_index = 0; p_index < nplugins; p_index++) {
-    if (plugins[p_index].close != NULL) {
-      (*(plugins[p_index].close))();
-    }
-    dlclose(plugins[p_index].handle);
-  }
-}
-
-void process_message(struct irc_message *msg) 
-{
-  int i;
-  struct irc_message *responses[MAX_RESPONSE_MSGES];
-  int num_of_responses = 0;
-
-  for (i = 0; i < nplugins; i++) {
-	struct irc_message *temp_msg;
-
-    if (strcmp(plugins[i].command, msg->command))
-		continue;
-
-	temp_msg = create_message(msg->prefix, msg->command, msg->params);
-    plugins[i].create_response(temp_msg, responses, &num_of_responses);
-	free_message(temp_msg);
-
-    if (num_of_responses > 0) 
-    {
-      int i;
-      for (i = 0; i < num_of_responses; i++) {
-        send_msg(responses[i]);
-        free_message(responses[i]);
-      }
-    }
-  }
-}
-
-int connect_to_server() 
-{
-  struct addrinfo *addr;
-  int sockfd;
-  int conn_result;
-
-  getaddr(&addr);
-
-  sockfd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-  if (sockfd < 0) 
-  {
-    perror("socket");
-    exit (EXIT_FAILURE);
-  }
-
-  conn_result = connect(sockfd, addr->ai_addr, addr->ai_addrlen);
-  if (conn_result < 0) 
-  {
-    fprintf(stderr, "Failure connecting to %s", address);
-    return -1;
-  }
-  freeaddrinfo(addr);
-
-  return sockfd;
-}
-
-int send_msg(struct irc_message *message) 
-{
-  char buf[IRC_BUF_LENGTH];
-  int idx = 0;
-
-  memset(buf, 0, sizeof(buf));
-
-  if (message->prefix) 
-  {
-    sprintf(buf+idx, "%s ", message->prefix);
-    idx += strlen(message->prefix) + 1;
-  }
-
-  sprintf(buf+idx, "%s", message->command);
-  idx += strlen(message->command);
-
-  if (message->params) 
-  {
-    sprintf(buf+idx, " %s", message->params);
-    idx += strlen(message->params) + 1;
-  }
-
-  sprintf(buf+idx, "\r\n");
-
-  /*printf("S:%s", buf);*/
-
-  return send(sockfd, (void*)buf, strlen(buf), 0);
-}
-
-int recv_msg(struct irc_message **message) 
-{
-  char buf[IRC_BUF_LENGTH];
-  int bytes_rcved = 0;
-  char *prefix, *command, *params, *tok;
-
-  do {
-    int bytes_read;
-    bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
-	if(bytes_read == 0){
-		fprintf(stderr, "Connection closed.\n");
-		exit(0);
+	n = scandir("plugins", &namelist, &filter, alphasort);
+	if (n < 0) {
+		perror("scandir");
+		exit(EXIT_FAILURE);
 	}
 
-	if(bytes_read == -1){
-		perror("recv");
-		exit(1);
+	while (n--) {
+
+		char location[100] = "plugins/";
+		strcpy(location + 8, namelist[n]->d_name);
+
+		handle = dlopen(location, RTLD_LAZY);
+
+		if (!handle) {
+			fprintf(stderr, "%s\n", dlerror());
+			exit(EXIT_FAILURE);
+		}
+
+		plugins[nplugins].handle = handle;
+
+		plugins[nplugins].command = (char *)dlsym(handle, "command");
+		plugins[nplugins].create_response =
+		    dlsym(handle, "create_response");
+		plugins[nplugins].initialize = dlsym(handle, "initialize");
+		plugins[nplugins].close = dlsym(handle, "close");
+
+		/* only count this as a valid plugin if both create_response
+		 * and command were found */
+		if (plugins[nplugins].create_response
+		    && plugins[nplugins].command)
+			nplugins++;
+
+		free(namelist[n]);
 	}
 
-	bytes_rcved += bytes_read;
-  } while (buf[bytes_rcved - 1] != '\n');
-
-  buf[bytes_rcved] = '\0';
-
-  /*printf("R:%s", buf);*/
-  prefix = command = params = NULL;
-
-  tok = strtok(buf, " ");
-  if (tok[0] != ':') 
-  {
-    command = tok;
-  }
-  else 
-  {
-    prefix = tok;
-    command = strtok(NULL, " ");
-  }
-
-  if ((tok = strtok(NULL, "\r\n")) != NULL) 
-  {
-    params = tok;
-  }
-
-  *message = create_message(prefix, command, params);
-  return bytes_rcved;
+	free(namelist);
 }
 
-struct irc_message *create_message(char *prefix, 
-                                   char *command, 
-                                   char *params) 
+void run_bot()
 {
-  int len = 0;
-  struct irc_message *msg;
+	int p_index;
+	int bytes_rcved = 0;
+	struct irc_message *inc_msg;
 
-  msg = malloc(sizeof(struct irc_message));
-  msg->prefix = NULL;
-  msg->command = NULL;
-  msg->params = NULL;
-  if (prefix != NULL) 
-  {
-    len += strlen(prefix) + 1; /* +1 for space after prefix */
-    if (len > IRC_BUF_LENGTH) 
-    {
-      free_message(msg);
-      return NULL;
-    }
-    msg->prefix = strdup(prefix);
-  }
+	load_plugins();
 
-  len += strlen(command);
-  if (len > IRC_BUF_LENGTH) 
-  {
-    free_message(msg);
-    return NULL;
-  }
-  msg->command = strdup(command);
+	for (p_index = 0; p_index < nplugins; p_index++) {
+		if (plugins[p_index].initialize)
+			plugins[p_index].initialize();
+	}
 
-  if (params != NULL) 
-  {
-    len += strlen(params) + 1; /* +1 for space before params */
-    if (len > IRC_BUF_LENGTH) 
-    {
-      free_message(msg);
-      return NULL;
-    }
-    msg->params = strdup(params);
-  }
-  return msg;
+	sockfd = connect_to_server();
+
+	bytes_rcved = recv_msg(&inc_msg);
+	do {
+		process_message(inc_msg);
+		free_message(inc_msg);
+		bytes_rcved = recv_msg(&inc_msg);
+	} while (keep_alive && bytes_rcved > 0 && inc_msg != NULL);
+
+	if (inc_msg != NULL) {
+		free_message(inc_msg);
+	}
+
+	shutdown(sockfd, SHUT_RDWR);
+	for (p_index = 0; p_index < nplugins; p_index++) {
+		if (plugins[p_index].close != NULL) {
+			(*(plugins[p_index].close)) ();
+		}
+		dlclose(plugins[p_index].handle);
+	}
 }
 
-void free_message(struct irc_message *message) 
+void process_message(struct irc_message *msg)
 {
-  if(message->prefix)
-    free(message->prefix);
-  if(message->params)
-    free(message->params);
-  if(message->command)
-    free(message->command);
-  free(message);
+	int i;
+	struct irc_message *responses[MAX_RESPONSE_MSGES];
+	int num_of_responses = 0;
+
+	for (i = 0; i < nplugins; i++) {
+		struct irc_message *temp_msg;
+
+		if (strcmp(plugins[i].command, msg->command))
+			continue;
+
+		temp_msg =
+		    create_message(msg->prefix, msg->command, msg->params);
+		plugins[i].create_response(temp_msg, responses,
+					   &num_of_responses);
+		free_message(temp_msg);
+
+		if (num_of_responses > 0) {
+			int i;
+			for (i = 0; i < num_of_responses; i++) {
+				send_msg(responses[i]);
+				free_message(responses[i]);
+			}
+		}
+	}
 }
 
-int getaddr (struct addrinfo **result) 
+int connect_to_server()
 {
-  char *name, *port, *addr;
-  struct addrinfo hints;
-  int s;
+	struct addrinfo *addr;
+	int sockfd;
+	int conn_result;
 
+	getaddr(&addr);
 
-  addr =  strdup(address);
-  memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = 0;
-  hints.ai_protocol = 0;
+	sockfd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+	if (sockfd < 0) {
+		perror("socket");
+		exit(EXIT_FAILURE);
+	}
 
-  name = strtok(addr, ":");
-  port = strtok(NULL, " ");
+	conn_result = connect(sockfd, addr->ai_addr, addr->ai_addrlen);
+	if (conn_result < 0) {
+		fprintf(stderr, "Failure connecting to %s", address);
+		return -1;
+	}
+	freeaddrinfo(addr);
 
-  s = getaddrinfo(name, 
-                  port == NULL ? DEFAULT_PORT : port, 
-                  &hints, 
-                  result);
-  free(addr);
+	return sockfd;
+}
 
-  if (s != 0) 
-  {
-    perror("addrinfo\n");
-    exit(EXIT_FAILURE);
-  }
+int send_msg(struct irc_message *message)
+{
+	char buf[IRC_BUF_LENGTH];
+	int idx = 0;
 
-  return 0;
+	memset(buf, 0, sizeof(buf));
+
+	if (message->prefix) {
+		sprintf(buf + idx, "%s ", message->prefix);
+		idx += strlen(message->prefix) + 1;
+	}
+
+	sprintf(buf + idx, "%s", message->command);
+	idx += strlen(message->command);
+
+	if (message->params) {
+		sprintf(buf + idx, " %s", message->params);
+		idx += strlen(message->params) + 1;
+	}
+
+	sprintf(buf + idx, "\r\n");
+
+	/*printf("S:%s", buf); */
+
+	return send(sockfd, (void *)buf, strlen(buf), 0);
+}
+
+int recv_msg(struct irc_message **message)
+{
+	char buf[IRC_BUF_LENGTH];
+	int bytes_rcved = 0;
+	char *prefix, *command, *params, *tok;
+
+	do {
+		int bytes_read;
+		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
+		if (bytes_read == 0) {
+			fprintf(stderr, "Connection closed.\n");
+			exit(0);
+		}
+
+		if (bytes_read == -1) {
+			perror("recv");
+			exit(1);
+		}
+
+		bytes_rcved += bytes_read;
+	} while (buf[bytes_rcved - 1] != '\n');
+
+	buf[bytes_rcved] = '\0';
+
+	/*printf("R:%s", buf); */
+	prefix = command = params = NULL;
+
+	tok = strtok(buf, " ");
+	if (tok[0] != ':') {
+		command = tok;
+	} else {
+		prefix = tok;
+		command = strtok(NULL, " ");
+	}
+
+	if ((tok = strtok(NULL, "\r\n")) != NULL) {
+		params = tok;
+	}
+
+	*message = create_message(prefix, command, params);
+	return bytes_rcved;
+}
+
+struct irc_message *create_message(char *prefix, char *command, char *params)
+{
+	int len = 0;
+	struct irc_message *msg;
+
+	msg = malloc(sizeof(struct irc_message));
+	msg->prefix = NULL;
+	msg->command = NULL;
+	msg->params = NULL;
+	if (prefix != NULL) {
+		len += strlen(prefix) + 1;	/* +1 for space after prefix */
+		if (len > IRC_BUF_LENGTH) {
+			free_message(msg);
+			return NULL;
+		}
+		msg->prefix = strdup(prefix);
+	}
+
+	len += strlen(command);
+	if (len > IRC_BUF_LENGTH) {
+		free_message(msg);
+		return NULL;
+	}
+	msg->command = strdup(command);
+
+	if (params != NULL) {
+		len += strlen(params) + 1;	/* +1 for space before params */
+		if (len > IRC_BUF_LENGTH) {
+			free_message(msg);
+			return NULL;
+		}
+		msg->params = strdup(params);
+	}
+	return msg;
+}
+
+void free_message(struct irc_message *message)
+{
+	if (message->prefix)
+		free(message->prefix);
+	if (message->params)
+		free(message->params);
+	if (message->command)
+		free(message->command);
+	free(message);
+}
+
+int getaddr(struct addrinfo **result)
+{
+	char *name, *port, *addr;
+	struct addrinfo hints;
+	int s;
+
+	addr = strdup(address);
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = 0;
+	hints.ai_protocol = 0;
+
+	name = strtok(addr, ":");
+	port = strtok(NULL, " ");
+
+	s = getaddrinfo(name,
+			port == NULL ? DEFAULT_PORT : port, &hints, result);
+	free(addr);
+
+	if (s != 0) {
+		perror("addrinfo\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return 0;
 }

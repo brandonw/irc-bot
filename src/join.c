@@ -5,11 +5,12 @@
 int has_joined = 0;
 const char command[] = "MODE";
 
-int create_response(struct irc_message *msg, struct irc_message **messages, int *msg_count)
+int create_response(struct irc_message *msg, struct irc_message **messages,
+		    int *msg_count)
 {
-  if (!has_joined) {
-    has_joined = 1;
-    messages[0] = create_message(NULL, "JOIN", channel);
-    *msg_count = 1;
-  }
+	if (!has_joined) {
+		has_joined = 1;
+		messages[0] = create_message(NULL, "JOIN", channel);
+		*msg_count = 1;
+	}
 }

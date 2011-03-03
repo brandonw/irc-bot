@@ -11,7 +11,6 @@
 extern char *address, *channel, *nick;
 extern int keep_alive;
 
-
 /*
  * Message and struct functions
  */
@@ -20,20 +19,16 @@ extern int keep_alive;
  * This struct should only be used when creating the return value type
  * of a plugin.
  */
-struct irc_message 
-{
-  char *prefix;
-  char *command;
-  char *params;
+struct irc_message {
+	char *prefix;
+	char *command;
+	char *params;
 };
 
 /*
  * Creates a response irc message. Must pre-allocate memory for all strings.
  */
-struct irc_message *create_message(char *prefix, 
-                                   char *command, 
-                                   char *params);
-
+struct irc_message *create_message(char *prefix, char *command, char *params);
 
 /*
  * Run bot.
@@ -45,5 +40,4 @@ void run_bot();
  */
 void load_plugins();
 
-
-#endif /* end of include guard: BOT_H */
+#endif				/* end of include guard: BOT_H */
