@@ -252,7 +252,6 @@ int recv_msg(struct irc_message **message)
 
 struct irc_message *create_message(char *prefix, char *command, char *params)
 {
-	int len = 0;
 	struct irc_message *msg;
 
 	msg = malloc(sizeof(struct irc_message));
