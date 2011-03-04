@@ -1,7 +1,7 @@
 vpath %.c src
 vpath %.h src
 
-CFLAGS = 
+CFLAGS = -W -Wall
 PKG_GLIB = `pkg-config --cflags --libs glib-2.0`
 PD_DIR = plugins
 SOURCES = bot.c main.c join.c send_nick.c quit.c ping.c karma.c
@@ -15,7 +15,7 @@ PLUGINS_SO = $(PD_DIR)/join.so $(PD_DIR)/send_nick.so $(PD_DIR)/quit.so \
 all: irc-bot irc-plugins
 
 irc-bot: bot.o main.o
-	$(CC) -rdynamic $(PKG_GLIB) $^ -o $@ -ldl
+	$(CC) $(CFLAGS) -rdynamic $(PKG_GLIB) $^ -o $@ -ldl
 	
 bot.o main.o $(PLUGINS_O): bot.h
 
@@ -29,10 +29,10 @@ $(PLUGINS_SO): %.so: %.o
 	ld -shared -soname $(@F) -o $@ -lc $<
 
 $(PLUGINS_O): $(PD_DIR)/%.o: %.c
-	$(CC) -fPIC -c $< -o $@
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 
 $(PD_DIR)/karma.o: karma.c
-	$(CC) -fPIC -c $< -o $@ $(PKG_GLIB)
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@ $(PKG_GLIB)
 
 .PHONY: clean
 clean : 
