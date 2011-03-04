@@ -123,8 +123,8 @@ void run_bot()
 
 	shutdown(sockfd, SHUT_RDWR);
 	for (p_index = 0; p_index < nplugins; p_index++) {
-		if (plugins[p_index].close != NULL) {
-			(*(plugins[p_index].close)) ();
+		if (plugins[p_index].close) {
+			plugins[p_index].close();
 		}
 		dlclose(plugins[p_index].handle);
 	}
@@ -187,8 +187,6 @@ int send_msg(struct irc_message *message)
 	char buf[IRC_BUF_LENGTH];
 	int idx = 0;
 
-	memset(buf, 0, sizeof(buf));
-
 	if (message->prefix) {
 		sprintf(buf + idx, "%s ", message->prefix);
 		idx += strlen(message->prefix) + 1;
@@ -206,7 +204,7 @@ int send_msg(struct irc_message *message)
 
 	/*printf("S:%s", buf); */
 
-	return send(sockfd, (void *)buf, strlen(buf), 0);
+	return send(sockfd, buf, strlen(buf), 0);
 }
 
 int recv_msg(struct irc_message **message)
@@ -220,12 +218,12 @@ int recv_msg(struct irc_message **message)
 		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
 		if (bytes_read == 0) {
 			fprintf(stderr, "Connection closed.\n");
-			exit(0);
+			exit(EXIT_SUCCESS);
 		}
 
 		if (bytes_read == -1) {
 			perror("recv");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		bytes_rcved += bytes_read;
@@ -261,30 +259,15 @@ struct irc_message *create_message(char *prefix, char *command, char *params)
 	msg->prefix = NULL;
 	msg->command = NULL;
 	msg->params = NULL;
-	if (prefix != NULL) {
-		len += strlen(prefix) + 1;	/* +1 for space after prefix */
-		if (len > IRC_BUF_LENGTH) {
-			free_message(msg);
-			return NULL;
-		}
-		msg->prefix = strdup(prefix);
-	}
 
-	len += strlen(command);
-	if (len > IRC_BUF_LENGTH) {
-		free_message(msg);
-		return NULL;
-	}
+	if (prefix)
+		msg->prefix = strdup(prefix);
+
 	msg->command = strdup(command);
 
-	if (params != NULL) {
-		len += strlen(params) + 1;	/* +1 for space before params */
-		if (len > IRC_BUF_LENGTH) {
-			free_message(msg);
-			return NULL;
-		}
+	if (params)
 		msg->params = strdup(params);
-	}
+
 	return msg;
 }
 
