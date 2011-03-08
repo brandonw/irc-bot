@@ -20,7 +20,7 @@ irc-bot: bot.o main.o
 bot.o main.o $(PLUGINS_O): bot.h
 
 .PHONY: irc-plugins
-irc-plugins: $(PLUGINS_SO) | $(PD_DIR)
+irc-plugins: $(PLUGINS_SO)
 
 $(PD_DIR):
 	mkdir $(PD_DIR)
@@ -28,15 +28,15 @@ $(PD_DIR):
 $(PLUGINS_SO): %.so: %.o
 	ld -shared -soname $(@F) -o $@ -lc $<
 
-$(PLUGINS_O): $(PD_DIR)/%.o: %.c
+$(PLUGINS_O): $(PD_DIR)/%.o: %.c | $(PD_DIR)
 	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 
-$(PD_DIR)/karma.o: karma.c
+$(PD_DIR)/karma.o: karma.c | $(PD_DIR)
 	$(CC) $(CFLAGS) -fPIC -c $< -o $@ $(PKG_GLIB)
 
 .PHONY: clean
 clean : 
-	-rm -f *.o irc-bot $(PD_DIR)/*.o $(PD_DIR)/*.so
+	-rm -f *.o irc-bot $(PD_DIR)
 
 
 #.PHONY: debug
