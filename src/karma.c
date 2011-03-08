@@ -4,7 +4,7 @@
 #include <glib.h>
 #include "bot.h"
 
-GHashTable static *karma_hash = NULL;
+static GHashTable *karma_hash = NULL;
 
 const char command[] = "PRIVMSG";
 
