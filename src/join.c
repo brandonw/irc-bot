@@ -13,4 +13,5 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 		messages[0] = create_message(NULL, "JOIN", channel);
 		*msg_count = 1;
 	}
+	return 0;
 }
