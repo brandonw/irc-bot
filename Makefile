@@ -36,7 +36,7 @@ $(PD_DIR)/karma.o: karma.c | $(PD_DIR)
 
 .PHONY: clean
 clean : 
-	-rm -f *.o irc-bot $(PD_DIR)
+	-rm -rf *.o irc-bot $(PD_DIR)
 
 
 #.PHONY: debug
