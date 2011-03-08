@@ -6,19 +6,18 @@
 #include <string.h>
 #include <dlfcn.h>
 #include <dirent.h>
-
+#include <unistd.h>
 #include "bot.h"
 
 int keep_alive = 1;
 
 int getaddr(struct addrinfo **result);
 int connect_to_server();
-int send_msg(struct irc_message *message);
-int recv_msg(struct irc_message **message);
-int sockfd;
+int send_msg(int, struct irc_message *message);
+struct irc_message *recv_msg(int);
 
 void free_message(struct irc_message *message);
-void process_message(struct irc_message *msg);
+void process_message(int, struct irc_message *msg);
 int filter(const struct dirent *);
 
 struct plugin {
@@ -98,8 +97,8 @@ void load_plugins()
 void run_bot()
 {
 	int p_index;
-	int bytes_rcved = 0;
 	struct irc_message *inc_msg;
+	int sockfd;
 
 	load_plugins();
 
@@ -110,18 +109,16 @@ void run_bot()
 
 	sockfd = connect_to_server();
 
-	bytes_rcved = recv_msg(&inc_msg);
 	do {
-		process_message(inc_msg);
+		inc_msg = recv_msg(sockfd);
+		if(!inc_msg)
+			break;
+		process_message(sockfd, inc_msg);
 		free_message(inc_msg);
-		bytes_rcved = recv_msg(&inc_msg);
-	} while (keep_alive && bytes_rcved > 0 && inc_msg != NULL);
+	} while (keep_alive);
 
-	if (inc_msg != NULL) {
-		free_message(inc_msg);
-	}
+	close(sockfd);
 
-	shutdown(sockfd, SHUT_RDWR);
 	for (p_index = 0; p_index < nplugins; p_index++) {
 		if (plugins[p_index].close) {
 			plugins[p_index].close();
@@ -130,7 +127,7 @@ void run_bot()
 	}
 }
 
-void process_message(struct irc_message *msg)
+void process_message(int sockfd, struct irc_message *msg)
 {
 	int i;
 	struct irc_message *responses[MAX_RESPONSE_MSGES];
@@ -151,7 +148,7 @@ void process_message(struct irc_message *msg)
 		if (num_of_responses > 0) {
 			int i;
 			for (i = 0; i < num_of_responses; i++) {
-				send_msg(responses[i]);
+				send_msg(sockfd, responses[i]);
 				free_message(responses[i]);
 			}
 		}
@@ -182,7 +179,7 @@ int connect_to_server()
 	return sockfd;
 }
 
-int send_msg(struct irc_message *message)
+int send_msg(int sockfd, struct irc_message *message)
 {
 	char buf[IRC_BUF_LENGTH];
 	int idx = 0;
@@ -207,23 +204,24 @@ int send_msg(struct irc_message *message)
 	return send(sockfd, buf, strlen(buf), 0);
 }
 
-int recv_msg(struct irc_message **message)
+struct irc_message *recv_msg(int sockfd)
 {
 	char buf[IRC_BUF_LENGTH];
 	int bytes_rcved = 0;
 	char *prefix, *command, *params, *tok;
+	struct irc_message *msg;
 
 	do {
 		int bytes_read;
 		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
 		if (bytes_read == 0) {
 			fprintf(stderr, "Connection closed.\n");
-			exit(EXIT_SUCCESS);
+			return NULL;
 		}
 
 		if (bytes_read == -1) {
 			perror("recv");
-			exit(EXIT_FAILURE);
+			return NULL;
 		}
 
 		bytes_rcved += bytes_read;
@@ -231,7 +229,6 @@ int recv_msg(struct irc_message **message)
 
 	buf[bytes_rcved] = '\0';
 
-	/*printf("R:%s", buf); */
 	prefix = command = params = NULL;
 
 	tok = strtok(buf, " ");
@@ -246,8 +243,9 @@ int recv_msg(struct irc_message **message)
 		params = tok;
 	}
 
-	*message = create_message(prefix, command, params);
-	return bytes_rcved;
+	msg = create_message(prefix, command, params);
+
+	return msg;
 }
 
 struct irc_message *create_message(char *prefix, char *command, char *params)
