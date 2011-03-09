@@ -9,7 +9,6 @@
 #define   MAX_PLUGINS         50
 
 extern char *address, *channel, *nick;
-extern int keep_alive;
 
 /*
  * Message and struct functions
@@ -25,19 +24,7 @@ struct irc_message {
 	char *params;
 };
 
-/*
- * Creates a response irc message. Must pre-allocate memory for all strings.
- */
-struct irc_message *create_message(char *prefix, char *command, char *params);
-
-/*
- * Run bot.
- */
 void run_bot();
-
-/*
- * Load plugins.
- */
-void load_plugins();
-
+void kill_bot();
+struct irc_message *create_message(char *, char *, char *);
 #endif				/* end of include guard: BOT_H */

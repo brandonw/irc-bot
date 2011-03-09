@@ -14,7 +14,7 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 	char buf[IRC_BUF_LENGTH];
 	char *tok = strtok(msg_message, " ");
 	if (strcmp(tok, "!QUIT") == 0 && strcmp(msg_nick, "brandonw") == 0) {
-		keep_alive = 0;
+		kill_bot();
 		messages[0] = create_message(NULL, "QUIT", NULL);
 		*msg_count = 1;
 	}
