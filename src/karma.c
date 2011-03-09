@@ -11,18 +11,20 @@ const char command[] = "PRIVMSG";
 int create_response(struct irc_message *msg, struct irc_message **messages,
 		    int *msg_count)
 {
-	*msg_count = 0;
-
-	char *msg_nick = strtok(msg->prefix, "!") + 1;
-	char *msg_channel = strtok(msg->params, " ");
-	char *msg_message = strtok(NULL, "") + 1;
 	char buf[IRC_BUF_LENGTH];
-	char *tok = strtok(msg_message, " ");
+	char *msg_message, *tok, *nick;
+	int *karma;
+	int k = 0;
+
+	strtok(msg->params, " ");
+	msg_message = strtok(NULL, "") + 1;
+	tok = strtok(msg_message, " ");
+
+	*msg_count = 0;
 
 	if (strcmp(tok, "!karma") == 0) {
 		tok = strtok(NULL, " ");
-		int *karma = (int *)g_hash_table_lookup(karma_hash, tok);
-		int k = 0;
+		karma = (int *)g_hash_table_lookup(karma_hash, tok);
 		if (karma != NULL) {
 			k = *karma;
 		}
@@ -32,8 +34,7 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 		*msg_count = 1;
 	} else if (strcmp(tok, "!up") == 0) {
 		tok = strtok(NULL, " ");
-		int *karma = (int *)g_hash_table_lookup(karma_hash, tok);
-		char *nick;
+		karma = (int *)g_hash_table_lookup(karma_hash, tok);
 		if (karma == NULL) {
 			karma = malloc(sizeof(int));
 			*karma = 0;
@@ -49,8 +50,7 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 		*msg_count = 1;
 	} else if (strcmp(tok, "!down") == 0) {
 		tok = strtok(NULL, " ");
-		int *karma = (int *)g_hash_table_lookup(karma_hash, tok);
-		char *nick;
+		karma = (int *)g_hash_table_lookup(karma_hash, tok);
 		if (karma == NULL) {
 			karma = malloc(sizeof(int));
 			*karma = 0;
@@ -71,12 +71,16 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 
 int initialize()
 {
-	karma_hash = g_hash_table_new(g_str_hash, g_str_equal);
-	FILE *fp = fopen("karma.txt", "r");
+	FILE *fp;
 	char nick[MAX_NICK_LENGTH];
 	int karma;
 	char *n;
 	int *k;
+
+	karma_hash = g_hash_table_new(g_str_hash, g_str_equal);
+
+	fp = fopen("karma.txt", "r");
+
 	while (fscanf(fp, "%s\t%d\n", nick, &karma) != EOF) {
 		n = (char *)malloc(strlen(nick) + 1);
 		k = (int *)malloc(sizeof(int));
