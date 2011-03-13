@@ -126,8 +126,8 @@ static void process_message(int sockfd, struct irc_message *msg)
 static int getaddr(struct addrinfo **result)
 {
 	char *name, *port, *addr;
-	struct addrinfo hints;
-	int s;
+	struct addrinfo hints, *p;
+	int s, sockfd;
 
 	addr = strdup(address);
 	memset(&hints, 0, sizeof(struct addrinfo));
@@ -139,15 +139,37 @@ static int getaddr(struct addrinfo **result)
 	name = strtok(addr, ":");
 	port = strtok(NULL, " ");
 
-	s = getaddrinfo(name,
-			port == NULL ? DEFAULT_PORT : port, &hints, result);
-	free(addr);
-
-	if (s != 0) {
-		perror("addrinfo\n");
+	if ((s = getaddrinfo(name,
+			     port == NULL ? DEFAULT_PORT : port, 
+			     &hints, 
+			     result)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+		/*perror("addrinfo\n");*/
 		exit(EXIT_FAILURE);
 	}
 
+	for (p = *result; p != NULL; p = p->ai_next) {
+		if ((sockfd = socket(p->ai_family, p->ai_socktype,
+				     p->ai_protocol)) == -1) {
+			perror("socket");
+			continue;
+		}
+		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+			close(sockfd);
+			perror("connect");
+			continue;
+		}
+
+		break; /* successfully connected */
+	}
+
+	if (p == NULL) {
+		fprintf(stderr, "failed to connect\n");
+		exit(2);
+	}
+
+	*result = p;
+	free(addr);
 	return 0;
 }
 
