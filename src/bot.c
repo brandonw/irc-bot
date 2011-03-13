@@ -144,7 +144,6 @@ static int getaddr(struct addrinfo **result)
 			     &hints, 
 			     result)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-		/*perror("addrinfo\n");*/
 		exit(EXIT_FAILURE);
 	}
 
