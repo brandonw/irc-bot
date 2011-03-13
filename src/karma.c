@@ -80,6 +80,8 @@ int initialize()
 	karma_hash = g_hash_table_new(g_str_hash, g_str_equal);
 
 	fp = fopen("karma.txt", "r");
+	if (!fp)
+		return 0;
 
 	while (fscanf(fp, "%s\t%d\n", nick, &karma) != EOF) {
 		n = (char *)malloc(strlen(nick) + 1);
