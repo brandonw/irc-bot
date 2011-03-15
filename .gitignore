@@ -1,6 +1,3 @@
-*.out
-*.o
-plugins
+bin
+obj
 *.swp
-karma.txt
-irc-bot
