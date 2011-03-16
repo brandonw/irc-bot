@@ -87,8 +87,11 @@ $(PLUG_SO_DIR):
 
 .PHONY: clean
 clean : 
-	$(RM) -r $(BIN_DIR) $(OBJ_DIR)
+	$(RM) -r $(BIN_DIR) $(OBJ_DIR) cscope.out
 
 .PHONY: debug
 debug: CFLAGS += -g -O0
 debug: all
+
+cscope.out: $(SRC) $(PLUG_SRC)
+	cscope -R -b
