@@ -79,7 +79,7 @@ int initialize()
 
 	karma_hash = g_hash_table_new(g_str_hash, g_str_equal);
 
-	fp = fopen("karma.txt", "a");
+	fp = fopen("karma.txt", "a+");
 	if (!fp)
 		return 0;
 
