@@ -272,7 +272,7 @@ static void load_plugins()
 		exit(EXIT_FAILURE);
 	}
 
-	while (n--) {
+	while (n-- && nplugins < MAX_PLUGINS) {
 
 		char location[100] = "plugins/";
 		strcpy(location + 8, namelist[n]->d_name);
@@ -299,6 +299,12 @@ static void load_plugins()
 			nplugins++;
 
 		free(namelist[n]);
+	}
+
+	if (nplugins == MAX_PLUGINS) {
+		printf("Attemped to load more than the max allowable number of"
+				"plugins (%d).", MAX_PLUGINS);
+
 	}
 
 	free(namelist);
