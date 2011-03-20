@@ -24,7 +24,26 @@ static int keep_alive = 1;
 
 struct irc_message *create_message(char *prefix, char *command, char *params)
 {
+	size_t msg_size = 0;
 	struct irc_message *msg;
+
+	/* check for total size of potential message */
+	if (prefix)
+		msg_size += strlen(prefix);
+	if (command)
+		msg_size += strlen(command);
+	if (params)
+		msg_size += strlen(params);
+
+	if (msg_size >= IRC_BUF_LENGTH) {
+		printf("Attempted to create a message with:\nprefix:%s\n" 
+		       "command:%s\nparams:%s\nwith a total size of %d\n", 
+		       prefix,
+		       command, 
+		       params, 
+		       (int)msg_size);
+		return NULL;
+	}
 
 	msg = malloc(sizeof(struct irc_message));
 	msg->prefix = NULL;
@@ -90,8 +109,6 @@ static int send_msg(int sockfd, struct irc_message *message)
 
 	sprintf(buf + idx, "\r\n");
 
-	/*printf("S:%s", buf); */
-
 	return send(sockfd, buf, strlen(buf), 0);
 }
 
@@ -109,6 +126,10 @@ static void process_message(int sockfd, struct irc_message *msg)
 
 		temp_msg =
 		    create_message(msg->prefix, msg->command, msg->params);
+
+		if (!temp_msg)
+			continue;
+
 		plugins[i].create_response(temp_msg, responses,
 					   &num_of_responses);
 		free_message(temp_msg);

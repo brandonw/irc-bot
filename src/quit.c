@@ -2,7 +2,6 @@
 #include <string.h>
 #include "bot.h"
 
-#include <stdio.h>
 const char command[] = "PRIVMSG";
 
 int create_response(struct irc_message *msg, struct irc_message **messages,
@@ -18,7 +17,8 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 	if (strcmp(msg_message, "!QUIT") == 0 && strcmp(msg_nick, "brandonw") == 0) {
 		kill_bot();
 		messages[0] = create_message(NULL, "QUIT", NULL);
-		*msg_count = 1;
+		if (messages[0])
+			*msg_count = 1;
 	}
 	return 0;
 }

@@ -15,9 +15,12 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 		return 0;
 
 	messages[0] = create_message(NULL, "NICK", nick);
+	if (messages[0])
+		(*msg_count)++;
 	sprintf(buf, "USER %s %s 8 * : %s", nick, nick, nick);
 	messages[1] = create_message(NULL, "USER", buf);
-	*msg_count = 2;
+	if (messages[1])
+		(*msg_count)++;
 
 	return 0;
 }

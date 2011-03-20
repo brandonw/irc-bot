@@ -31,7 +31,8 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 
 		sprintf(buf, "%s :%s has %d karma", channel, tok, k);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
-		*msg_count = 1;
+		if (messages[0])
+			*msg_count = 1;
 	} else if (strcmp(tok, "!up") == 0) {
 		tok = strtok(NULL, " ");
 		karma = (int *)g_hash_table_lookup(karma_hash, tok);
@@ -47,7 +48,8 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 		sprintf(buf, "%s :%s has been upvoted to %d karma",
 			channel, tok, *karma);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
-		*msg_count = 1;
+		if (messages[0])
+			*msg_count = 1;
 	} else if (strcmp(tok, "!down") == 0) {
 		tok = strtok(NULL, " ");
 		karma = (int *)g_hash_table_lookup(karma_hash, tok);
@@ -63,7 +65,8 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 		sprintf(buf, "%s :%s has been downvoted to %d karma",
 			channel, tok, *karma);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
-		*msg_count = 1;
+		if (messages[0])
+			*msg_count = 1;
 	}
 
 	return 0;

@@ -11,7 +11,8 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 	if (!has_joined) {
 		has_joined = 1;
 		messages[0] = create_message(NULL, "JOIN", channel);
-		*msg_count = 1;
+		if (messages[0])
+			*msg_count = 1;
 	}
 	return 0;
 }
