@@ -3,7 +3,12 @@
 #include "bot.h"
 
 int has_joined = 0;
-const char command[] = "MODE";
+static const char command[] = "MODE";
+
+char *get_command()
+{
+	return (char *)command;
+}
 
 int create_response(struct irc_message *msg, struct irc_message **messages,
 		    int *msg_count)

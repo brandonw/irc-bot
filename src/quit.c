@@ -2,7 +2,12 @@
 #include <string.h>
 #include "bot.h"
 
-const char command[] = "PRIVMSG";
+static const char command[] = "PRIVMSG";
+
+char *get_command()
+{
+	return (char *)command;
+}
 
 int create_response(struct irc_message *msg, struct irc_message **messages,
 		    int *msg_count)

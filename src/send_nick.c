@@ -4,7 +4,12 @@
 #include "bot.h"
 
 int has_sent_nick = 0;
-const char command[] = "NOTICE";
+static const char command[] = "NOTICE";
+
+char *get_command()
+{
+	return (char *)command;
+}
 
 int create_response(struct irc_message *msg, struct irc_message **messages,
 		    int *msg_count)

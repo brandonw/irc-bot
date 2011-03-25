@@ -11,7 +11,7 @@
 
 struct plugin {
 	void *handle;
-	char *command;
+	char *(*get_command) ();
 	int (*create_response) (struct irc_message *, struct irc_message **,
 				int *);
 	int (*initialize) ();
@@ -121,7 +121,7 @@ static void process_message(int sockfd, struct irc_message *msg)
 	for (i = 0; i < nplugins; i++) {
 		struct irc_message *temp_msg;
 
-		if (strcmp(plugins[i].command, msg->command))
+		if (strcmp(plugins[i].get_command(), msg->command))
 			continue;
 
 		temp_msg =
@@ -286,16 +286,16 @@ static void load_plugins()
 
 		plugins[nplugins].handle = handle;
 
-		plugins[nplugins].command = (char *)dlsym(handle, "command");
+		plugins[nplugins].get_command = dlsym(handle, "get_command");
 		plugins[nplugins].create_response =
 		    dlsym(handle, "create_response");
 		plugins[nplugins].initialize = dlsym(handle, "initialize");
 		plugins[nplugins].close = dlsym(handle, "close");
 
 		/* only count this as a valid plugin if both create_response
-		 * and command were found */
+		 * and get_command were found */
 		if (plugins[nplugins].create_response
-		    && plugins[nplugins].command)
+		    && plugins[nplugins].get_command)
 			nplugins++;
 
 		free(namelist[n]);
