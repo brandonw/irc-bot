@@ -4,7 +4,7 @@
 
 #define   DEFAULT_PORT        "6667"
 #define   IRC_BUF_LENGTH      513
-#define   MAX_NICK_LENGTH     500
+#define   MAX_NICK_LENGTH     100
 #define   MAX_RESPONSE_MSGES  10
 #define   MAX_PLUGINS         50
 
