@@ -6,6 +6,9 @@
 #include <string.h>
 #include "bot.h"
 
+#define   MAX_KARMA_LINE_LENGTH	100
+#define   MAX_NICK_LENGTH	80
+
 static GHashTable *karma_hash = NULL;
 
 static const char command[] = "PRIVMSG";
@@ -15,11 +18,11 @@ char *get_command()
 	return (char *)command;
 }
 
-int create_response(struct irc_message *msg, 
+int create_response(struct irc_message *msg,
 		struct irc_message **messages, int *msg_count)
 {
 	char buf[IRC_BUF_LENGTH];
-	char *msg_message, *tok, *nick;
+	char *msg_message, *tok, *nick, *n;
 	long *karma;
 	long k = 0;
 
@@ -27,48 +30,49 @@ int create_response(struct irc_message *msg,
 	msg_message = strtok(NULL, "") + 1;
 	tok = strtok(msg_message, " ");
 
+	n = strtok(NULL, " ");
+	if (n == NULL || strlen(n) > MAX_NICK_LENGTH)
+		return 0;
+
 	*msg_count = 0;
 
 	if (strcmp(tok, "!karma") == 0) {
-		tok = strtok(NULL, " ");
-		karma = (long *)g_hash_table_lookup(karma_hash, tok);
+		karma = (long *)g_hash_table_lookup(karma_hash, n);
 		if (karma != NULL) {
 			k = *karma;
 		}
 
-		sprintf(buf, "%s :%s has %ld karma", channel, tok, k);
+		sprintf(buf, "%s :%s has %ld karma", channel, n, k);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
 		if (messages[0])
 			*msg_count = 1;
 	} else if (strcmp(tok, "!up") == 0) {
-		tok = strtok(NULL, " ");
-		karma = (long *)g_hash_table_lookup(karma_hash, tok);
+		karma = (long *)g_hash_table_lookup(karma_hash, n);
 		if (karma == NULL) {
 			karma = malloc(sizeof(long));
 			*karma = 0;
-			nick = strdup(tok);
+			nick = strdup(n);
 			g_hash_table_insert(karma_hash, nick, karma);
 		}
 		(*karma)++;
 
 		sprintf(buf, "%s :%s has been upvoted to %ld karma",
-			channel, tok, *karma);
+			channel, n, *karma);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
 		if (messages[0])
 			*msg_count = 1;
 	} else if (strcmp(tok, "!down") == 0) {
-		tok = strtok(NULL, " ");
-		karma = (long *)g_hash_table_lookup(karma_hash, tok);
+		karma = (long *)g_hash_table_lookup(karma_hash, n);
 		if (karma == NULL) {
 			karma = malloc(sizeof(long));
 			*karma = 0;
-			nick = strdup(tok);
-			g_hash_table_insert(karma_hash, nick, karma);
+			nick = strdup(n);
+			g_hash_table_insert(karma_hash, n, karma);
 		}
 		(*karma)--;
 
 		sprintf(buf, "%s :%s has been downvoted to %ld karma",
-			channel, tok, *karma);
+			channel, n, *karma);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
 		if (messages[0])
 			*msg_count = 1;
@@ -100,6 +104,10 @@ int initialize()
 		tok = strtok(buf, "\t ");
 		if (tok == NULL)
 			continue;
+		if (strlen(tok) > MAX_NICK_LENGTH) {
+			fprintf(stderr, "Nick is too long.\n");
+			continue;
+		}
 		n = strdup(tok);
 
 		tok = strtok(NULL, "\t ");
