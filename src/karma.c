@@ -41,8 +41,7 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 		if (karma == NULL) {
 			karma = malloc(sizeof(long));
 			*karma = 0;
-			nick = malloc(strlen(tok) + 1);
-			strcpy(nick, tok);
+			nick = strdup(tok);
 			g_hash_table_insert(karma_hash, nick, karma);
 		}
 		(*karma)++;
@@ -58,8 +57,7 @@ int create_response(struct irc_message *msg, struct irc_message **messages,
 		if (karma == NULL) {
 			karma = malloc(sizeof(long));
 			*karma = 0;
-			nick = malloc(strlen(tok) + 1);
-			strcpy(nick, tok);
+			nick = strdup(tok);
 			g_hash_table_insert(karma_hash, nick, karma);
 		}
 		(*karma)--;
