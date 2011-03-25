@@ -11,8 +11,8 @@ char *get_command()
 	return (char *)command;
 }
 
-int create_response(struct irc_message *msg, struct irc_message **messages,
-		    int *msg_count)
+int create_response(struct irc_message *msg, 
+		struct irc_message **messages, int *msg_count)
 {
 	char buf[IRC_BUF_LENGTH];
 

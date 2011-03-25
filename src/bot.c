@@ -12,8 +12,8 @@
 struct plugin {
 	void *handle;
 	char *(*get_command) ();
-	int (*create_response) (struct irc_message *, struct irc_message **,
-				int *);
+	int (*create_response) (struct irc_message *, 
+			struct irc_message **, int *);
 	int (*initialize) ();
 	int (*close) ();
 };
@@ -131,7 +131,7 @@ static void process_message(int sockfd, struct irc_message *msg)
 			continue;
 
 		plugins[i].create_response(temp_msg, responses,
-					   &num_of_responses);
+				&num_of_responses);
 		free_message(temp_msg);
 
 		if (num_of_responses > 0) {
@@ -309,7 +309,6 @@ static void load_plugins()
 
 	free(namelist);
 }
-
 
 void run_bot()
 {

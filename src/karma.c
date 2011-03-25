@@ -15,8 +15,8 @@ char *get_command()
 	return (char *)command;
 }
 
-int create_response(struct irc_message *msg, struct irc_message **messages,
-		    int *msg_count)
+int create_response(struct irc_message *msg, 
+		struct irc_message **messages, int *msg_count)
 {
 	char buf[IRC_BUF_LENGTH];
 	char *msg_message, *tok, *nick;
@@ -112,8 +112,8 @@ int initialize()
 		errno = 0;
 		*k = strtol(tok, &endptr, 10);
 
-		if ((errno == ERANGE && (*k == LONG_MAX || *k == LONG_MIN)) ||
-				(errno != 0 && *k == 0)) {
+		if ((errno == ERANGE && (*k == LONG_MAX || *k == LONG_MIN))
+				|| (errno != 0 && *k == 0)) {
 			fprintf(stderr, "Karma outside of range.\n");
 			continue;
 		}
@@ -137,9 +137,8 @@ int close()
 	long *karma;
 	while (keys != NULL) {
 		nick = (char *)keys->data;
-		karma =
-		    (long *)g_hash_table_lookup(karma_hash,
-					       (gconstpointer) nick);
+		karma = (long *)g_hash_table_lookup(karma_hash,
+				(gconstpointer) nick);
 		fprintf(fp, "%s\t%ld\n", nick, *karma);
 		g_hash_table_remove(karma_hash, (gconstpointer) nick);
 		free(nick);
