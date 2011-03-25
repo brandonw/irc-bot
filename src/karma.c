@@ -80,7 +80,7 @@ int create_response(struct irc_message *msg,
 int initialize()
 {
 	FILE *fp;
-	char buf[MAX_NICK_LENGTH];
+	char buf[MAX_KARMA_LINE_LENGTH];
 	int errno;
 	char *n;
 	long *k;
