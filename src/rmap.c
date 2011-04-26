@@ -1,6 +1,3 @@
-/*#include <errno.h>*/
-/*#include <glib.h>*/
-/*#include <limits.h>*/
 #include <dirent.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -8,6 +5,7 @@
 #include "bot.h"
 
 #define   MAX_MAPS_PER_POOL	25
+#define   MAX_POOLS		MAX_RESPONSE_MSGES - 2
 
 static int npools = 0;
 static struct pool **pools = NULL;
@@ -86,71 +84,6 @@ char *get_command()
 	return (char *)command;
 }
 
-int create_response(struct irc_message *msg,
-		struct irc_message **messages, int *msg_count)
-{
-	char buf[IRC_BUF_LENGTH];
-	char *msg_message, *tok, *n;
-
-	strtok(msg->params, " ");
-	msg_message = strtok(NULL, "") + 1;
-	tok = strtok(msg_message, " ");
-
-	n = strtok(NULL, " ");
-	if (n == NULL)
-		return 0;
-
-	/*if (strcmp(tok, "!pools") == 0) {*/
-		/*int i;*/
-
-		/*for (i = 0; i < npools; i++) {*/
-			/*[> print pools <]*/
-
-		/*}*/
-		/*karma = (long *)g_hash_table_lookup(karma_hash, n);*/
-		/*if (karma != NULL) {*/
-			/*k = *karma;*/
-		/*}*/
-
-		/*sprintf(buf, "%s :%s has %ld karma", channel, n, k);*/
-		/*messages[0] = create_message(NULL, "PRIVMSG", buf);*/
-		/*if (messages[0])*/
-			/**msg_count = 1;*/
-	/*} [>else if (strcmp(tok, "!up") == 0) {<]*/
-		/*karma = (long *)g_hash_table_lookup(karma_hash, n);*/
-		/*if (karma == NULL) {*/
-			/*karma = malloc(sizeof(long));*/
-			/**karma = 0;*/
-			/*nick = strdup(n);*/
-			/*g_hash_table_insert(karma_hash, nick, karma);*/
-		/*}*/
-		/*(*karma)++;*/
-
-		/*sprintf(buf, "%s :%s has been upvoted to %ld karma",*/
-			/*channel, n, *karma);*/
-		/*messages[0] = create_message(NULL, "PRIVMSG", buf);*/
-		/*if (messages[0])*/
-			/**msg_count = 1;*/
-	/*} else if (strcmp(tok, "!down") == 0) {*/
-		/*karma = (long *)g_hash_table_lookup(karma_hash, n);*/
-		/*if (karma == NULL) {*/
-			/*karma = malloc(sizeof(long));*/
-			/**karma = 0;*/
-			/*nick = strdup(n);*/
-			/*g_hash_table_insert(karma_hash, n, karma);*/
-		/*}*/
-		/*(*karma)--;*/
-
-		/*sprintf(buf, "%s :%s has been downvoted to %ld karma",*/
-			/*channel, n, *karma);*/
-		/*messages[0] = create_message(NULL, "PRIVMSG", buf);*/
-		/*if (messages[0])*/
-			/**msg_count = 1;*/
-	/*}*/
-
-	return 0;
-}
-
 int initialize()
 {
 	FILE *fp;
@@ -159,7 +92,8 @@ int initialize()
 	struct dirent **namelist;
 	int n, i;
 
-	pools = malloc(sizeof(struct pool *) * MAX_RESPONSE_MSGES);
+	npools = 0;
+	pools = malloc(sizeof(struct pool *) * MAX_POOLS);
 	n = scandir("../rmap", &namelist, &filter, alphasort);
 
 	if (n < 0) {
@@ -167,7 +101,7 @@ int initialize()
 		exit(EXIT_FAILURE);
 	}
 
-	while (n-- && npools < MAX_RESPONSE_MSGES) {
+	while (n-- && npools < MAX_POOLS) {
 		char location[100] = "../rmap/";
 		strcpy(location + 8, namelist[n]->d_name);
 
@@ -206,21 +140,13 @@ int initialize()
 		free(namelist[n]);
 	}
 
-	if (npools == MAX_RESPONSE_MSGES) {
+	if (npools == MAX_POOLS) {
 		printf("Attemped to load more than the max allowable number of"
-				"map pools (%d).", MAX_PLUGINS);
+				"map pools (%d).", MAX_POOLS);
 
 	}
 	
 	free(namelist);
-
-	for (i = 0; i < npools; i++) {
-		printf("%s ------------------\n", pools[i]->name);
-		for (n = 0; n < pools[i]->nmaps; n++) {
-			printf("%s\n", pools[i]->maps[n]);
-		}
-	}
-
 	return 0;
 }
 
@@ -232,5 +158,104 @@ int close()
 		free_pool(pools[i]);
 	free(pools);
 
+	return 0;
+}
+int create_response(struct irc_message *msg,
+		struct irc_message **messages, int *msg_count)
+{
+	char buf[IRC_BUF_LENGTH];
+	char *msg_message, *command, *n, *c;
+
+	/* channel */
+	c = strtok(msg->params, " ");
+
+	/* message */
+	msg_message = strtok(NULL, "") + 1;
+
+	/* command (e.g. !pools) */
+	command = strtok(msg_message, " ");
+
+	/* pool number (if specified) */
+	n = strtok(NULL, " ");
+
+	if (strcmp(command, "!pools") == 0) {
+		int i;
+
+		sprintf(buf, "%s :%s",
+				c,
+				"Available map pools:");
+		messages[*msg_count] =
+			create_message(NULL, "PRIVMSG", buf);
+		if (messages[*msg_count])
+			(*msg_count)++;
+
+		sprintf(buf, "%s :%s", 
+				c, 
+				"All pools (don't specify a number)");
+		messages[*msg_count] = 
+			create_message(NULL, "PRIVMSG", buf);
+		if (messages[*msg_count])
+			(*msg_count)++;
+
+		for (i = 0; i < npools; i++) {
+			sprintf(buf, "%s :%d. %s", 
+					c, i+1, pools[i]->name);
+			messages[*msg_count] = 
+				create_message(NULL, "PRIVMSG", buf);
+			if (messages[*msg_count])
+				(*msg_count)++;
+		}
+	} else if (strcmp(command, "!reload") == 0) {
+		close();
+		initialize();
+
+		sprintf(buf, "%s :%s",
+				c,
+				"Reloaded map pools");
+		messages[*msg_count] =
+			create_message(NULL, "PRIVMSG", buf);
+		if (messages[*msg_count])
+			(*msg_count)++;
+	} else if (strcmp(command, "!rm") == 0) {
+		int pn, choice;
+
+		if (n != NULL) {
+			/* pick a map from the specified pool */
+			pn = atoi(n);	
+			if (pn == 0 || pn > npools)
+				return -1;
+			pn--;
+			
+			choice = random() % (pools[pn]->nmaps);
+
+			sprintf(buf, "%s :Map: %s",
+					c, pools[pn]->maps[choice]);
+			messages[*msg_count] =
+				create_message(NULL, "PRIVMSG", buf);
+			if (messages[*msg_count])
+				(*msg_count)++;
+		} else {
+			/* pick a map from the union of all pools */
+			int totalmaps, i;
+
+			for (i = 0; i < npools; i++)
+				totalmaps += pools[i]->nmaps;
+			choice = random() % totalmaps;
+
+			i = 0;
+			while (choice >= pools[i]->nmaps) {
+				choice -= pools[i]->nmaps;
+				i++;
+			}
+
+			sprintf(buf, "%s :Map: %s",
+					c, pools[i]->maps[choice]);
+			messages[*msg_count] =
+				create_message(NULL, "PRIVMSG", buf);
+			if (messages[*msg_count])
+				(*msg_count)++;
+		}
+	}
+	
 	return 0;
 }
