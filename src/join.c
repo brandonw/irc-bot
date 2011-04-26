@@ -2,7 +2,7 @@
 #include <string.h>
 #include "bot.h"
 
-int has_joined = 0;
+static int has_joined = 0;
 static const char command[] = "MODE";
 
 char *get_command()
