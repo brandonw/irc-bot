@@ -116,11 +116,12 @@ static void process_message(int sockfd, struct irc_message *msg)
 {
 	int i;
 	struct irc_message *responses[MAX_RESPONSE_MSGES];
-	int num_of_responses = 0;
+	int num_of_responses;
 
 	for (i = 0; i < nplugins; i++) {
 		struct irc_message *temp_msg;
 
+		num_of_responses = 0;
 		if (strcmp(plugins[i].get_command(), msg->command))
 			continue;
 
