@@ -5,6 +5,7 @@ PLUG_SRC += send_nick.c
 PLUG_SRC += quit.c
 PLUG_SRC += ping.c
 PLUG_SRC += karma.c
+PLUG_SRC += rmap.c
 
 # Specially compiled plugin source
 SPE_PLUG_SRC += karma.c
