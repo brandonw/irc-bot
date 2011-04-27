@@ -172,6 +172,11 @@ int create_response(struct irc_message *msg,
 	/* message */
 	msg_message = strtok(NULL, "") + 1;
 
+	/* if channel is the bot's nick, it is a PM
+	 * determine channel from the params */
+	if (strcmp(c, nick) == 0)
+		c = strtok(msg->prefix, "!") + 1;
+
 	/* command (e.g. !pools) */
 	command = strtok(msg_message, " ");
 	if (command == NULL)
