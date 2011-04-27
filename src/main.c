@@ -44,8 +44,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-    signal(SIGTERM, kill_bot);
-
+	signal(SIGTERM, kill_bot);
 	run_bot();
 
 	return EXIT_SUCCESS;
