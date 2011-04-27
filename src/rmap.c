@@ -141,8 +141,9 @@ int initialize()
 	}
 
 	if (npools == MAX_POOLS) {
-		printf("Attemped to load more than the max allowable number of"
-				"map pools (%d).", MAX_POOLS);
+		fprintf(stderr,
+			"Attemped to load more than the max allowable number of"
+			"map pools (%d).", MAX_POOLS);
 
 	}
 	

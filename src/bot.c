@@ -45,12 +45,13 @@ struct irc_message *create_message(char *prefix, char *command, char *params)
 		msg_size += strlen(params);
 
 	if (msg_size >= IRC_BUF_LENGTH) {
-		printf("Attempted to create a message with:\nprefix:%s\n" 
-		       "command:%s\nparams:%s\nwith a total size of %d\n", 
-		       prefix,
-		       command, 
-		       params, 
-		       (int)msg_size);
+		fprintf(stderr,
+			"Attempted to create a message with:\nprefix:%s\n"
+			"command:%s\nparams:%s\nwith a total size of %d\n",
+			prefix,
+			command,
+			params,
+			(int)msg_size);
 		return NULL;
 	}
 
@@ -321,8 +322,9 @@ static void load_plugins()
 	}
 
 	if (nplugins == MAX_PLUGINS) {
-		printf("Attemped to load more than the max allowable number of"
-				"plugins (%d).", MAX_PLUGINS);
+		fprintf(stderr,
+			"Attemped to load more than the max allowable number of"
+			"plugins (%d).", MAX_PLUGINS);
 
 	}
 
