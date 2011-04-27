@@ -138,16 +138,25 @@ int initialize()
 
 int close()
 {
-	GList *key_list = g_hash_table_get_keys(karma_hash);
-	GList *keys = key_list;
-	FILE *fp = fopen("karma.txt", "w");
+	GList *key_list;
+	GList *keys;
+	FILE *fp;
 	char *nick;
 	long *karma;
+
+	key_list = g_hash_table_get_keys(karma_hash);
+	keys = key_list;
+	fp = fopen("karma.txt", "w");
+	if (fp == NULL)
+		fprintf(stderr, "Error opening karma.txt\n");
+
 	while (keys != NULL) {
 		nick = (char *)keys->data;
 		karma = (long *)g_hash_table_lookup(karma_hash,
 				(gconstpointer) nick);
-		fprintf(fp, "%s\t%ld\n", nick, *karma);
+		if (fp != NULL)
+			fprintf(fp, "%s\t%ld\n", nick, *karma);
+
 		g_hash_table_remove(karma_hash, (gconstpointer) nick);
 		free(nick);
 		free(karma);
