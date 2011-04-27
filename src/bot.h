@@ -24,6 +24,6 @@ struct irc_message {
 };
 
 void run_bot();
-void kill_bot();
+void kill_bot(int p);
 struct irc_message *create_message(char *, char *, char *);
 #endif				/* end of include guard: BOT_H */

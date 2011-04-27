@@ -241,6 +241,7 @@ static struct irc_message *recv_msg(int sockfd)
 		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
 		if (bytes_read == 0) {
 			fprintf(stderr, "Connection closed.\n");
+			kill_bot(0);
 			return NULL;
 		}
 
@@ -358,7 +359,7 @@ void run_bot()
 	}
 }
 
-void kill_bot()
+void kill_bot(int p)
 {
 	keep_alive = 0;
 }
