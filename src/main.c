@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
 {
 	int err, opt, aflag, cflag, nflag;
 	err = opt = aflag = cflag = nflag = 0;
+	void (*prev_fn)(int);
 
 	while ((opt = getopt(argc, argv, "a:c:n:")) != -1) {
 		switch (opt) {
@@ -44,7 +45,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	signal(SIGTERM, kill_bot);
+	prev_fn = signal(SIGINT, kill_bot);
+	if (prev_fn == SIG_ERR)
+		fprintf(stderr, "Error setting signal handler.\n");
 	run_bot();
 
 	return EXIT_SUCCESS;
