@@ -7,7 +7,8 @@
 #include <dlfcn.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <sys/time.h>
+#include <sys/select.h>
 #include "bot.h"
 
 struct plugin {
@@ -148,9 +149,11 @@ static void process_message(int sockfd, struct irc_message *msg)
 		if (num_of_responses > 0) {
 			int i;
 			for (i = 0; i < num_of_responses; i++) {
-				/*printf("Sending:\n");*/
-				/*print_message(responses[i]);*/
-				/*printf("\n");*/
+
+				printf("Sending:\n");
+				print_message(responses[i]);
+				printf("\n");
+
 				send_msg(sockfd, responses[i]);
 				free_message(responses[i]);
 			}
@@ -211,7 +214,7 @@ static int connect_to_server()
 {
 	struct addrinfo *addr;
 	int sockfd;
-	int conn_result, r;
+	int conn_result;
 
 	getaddr(&addr);
 
@@ -228,23 +231,34 @@ static int connect_to_server()
 	}
 	freeaddrinfo(addr);
 
-	r = fcntl(sockfd, F_SETFD, O_NONBLOCK);
-	if (r == -1) {
-		fprintf(stderr, "Failed to set non-blocking flag on fd.");
-		keep_alive = 0;
-	}
 	return sockfd;
 }
 
 static struct irc_message *recv_msg(int sockfd)
 {
 	char buf[IRC_BUF_LENGTH];
-	int bytes_rcved = 0;
+	int bytes_rcved, retval;
 	char *prefix, *command, *params, *tok;
+	fd_set rfds;
+	struct timeval tv;
 	struct irc_message *msg;
+
+	FD_ZERO(&rfds);
+	FD_SET(sockfd, &rfds);
+	tv.tv_sec = 0;
+	tv.tv_usec = 500000;
+
+	retval = select(sockfd + 1, &rfds, NULL, NULL, &tv);
+	if (retval == -1) {
+		kill_bot(0);
+		return NULL;
+	} else if (!retval) {
+		return NULL;
+	}
 
 	do {
 		int bytes_read;
+
 		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
 		if (bytes_read == 0) {
 			fprintf(stderr, "Connection closed.\n");
@@ -254,6 +268,7 @@ static struct irc_message *recv_msg(int sockfd)
 
 		if (bytes_read == -1) {
 			perror("recv");
+			kill_bot(1);
 			return NULL;
 		}
 
@@ -349,16 +364,16 @@ void run_bot()
 	while (keep_alive) {
 		inc_msg = recv_msg(sockfd);
 		if(!inc_msg) {
-			printf("empty fd\n");
 			continue;
 		}
-		/*printf("Received:\n");*/
-		/*print_message(inc_msg);*/
-		/*printf("\n");*/
+
+		printf("Received:\n");
+		print_message(inc_msg);
+		printf("\n");
+
 		process_message(sockfd, inc_msg);
 		free_message(inc_msg);
 	}
-	printf("out of loop\n");
 
 	close(sockfd);
 
