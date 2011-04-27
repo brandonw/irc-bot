@@ -174,6 +174,8 @@ int create_response(struct irc_message *msg,
 
 	/* command (e.g. !pools) */
 	command = strtok(msg_message, " ");
+	if (command == NULL)
+		return 0;
 
 	/* pool number (if specified) */
 	n = strtok(NULL, " ");
