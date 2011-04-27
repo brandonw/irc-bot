@@ -24,9 +24,9 @@ static int keep_alive = 1;
 
 void print_message(struct irc_message *msg)
 {
-	printf("PREFIX:  %s\n", msg->prefix);
-	printf("COMMAND: %s\n", msg->command);
-	printf("PARAMS:  %s\n", msg->params);
+	printf("PREFIX:  \"%s\"\n", msg->prefix);
+	printf("COMMAND: \"%s\"\n", msg->command);
+	printf("PARAMS:  \"%s\"\n", msg->params);
 	return;
 }
 
@@ -148,7 +148,7 @@ static void process_message(int sockfd, struct irc_message *msg)
 			for (i = 0; i < num_of_responses; i++) {
 				printf("Sending:\n");
 				print_message(responses[i]);
-				printf("---\n\n");
+				printf("\n\n");
 				send_msg(sockfd, responses[i]);
 				free_message(responses[i]);
 			}
@@ -343,7 +343,7 @@ void run_bot()
 			break;
 		printf("Received:\n");
 		print_message(inc_msg);
-		printf("---\n\n");
+		printf("\n\n");
 		process_message(sockfd, inc_msg);
 		free_message(inc_msg);
 	} while (keep_alive);
