@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 #include "bot.h"
 
 char *address = NULL;
@@ -42,6 +43,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "being special characters.\n");
 		exit(EXIT_FAILURE);
 	}
+
+    signal(SIGTERM, kill_bot);
 
 	run_bot();
 
