@@ -7,6 +7,7 @@
 #include <dlfcn.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "bot.h"
 
 struct plugin {
@@ -146,9 +147,9 @@ static void process_message(int sockfd, struct irc_message *msg)
 		if (num_of_responses > 0) {
 			int i;
 			for (i = 0; i < num_of_responses; i++) {
-				printf("Sending:\n");
-				print_message(responses[i]);
-				printf("\n");
+				/*printf("Sending:\n");*/
+				/*print_message(responses[i]);*/
+				/*printf("\n");*/
 				send_msg(sockfd, responses[i]);
 				free_message(responses[i]);
 			}
@@ -209,7 +210,7 @@ static int connect_to_server()
 {
 	struct addrinfo *addr;
 	int sockfd;
-	int conn_result;
+	int conn_result, r;
 
 	getaddr(&addr);
 
@@ -226,6 +227,11 @@ static int connect_to_server()
 	}
 	freeaddrinfo(addr);
 
+	r = fcntl(sockfd, F_SETFD, O_NONBLOCK);
+	if (r == -1) {
+		fprintf(stderr, "Failed to set non-blocking flag on fd.");
+		keep_alive = 0;
+	}
 	return sockfd;
 }
 
@@ -338,16 +344,19 @@ void run_bot()
 
 	sockfd = connect_to_server();
 
-	do {
+	while (keep_alive) {
 		inc_msg = recv_msg(sockfd);
-		if(!inc_msg)
-			break;
-		printf("Received:\n");
-		print_message(inc_msg);
-		printf("\n");
+		if(!inc_msg) {
+			printf("empty fd\n");
+			continue;
+		}
+		/*printf("Received:\n");*/
+		/*print_message(inc_msg);*/
+		/*printf("\n");*/
 		process_message(sockfd, inc_msg);
 		free_message(inc_msg);
-	} while (keep_alive);
+	}
+	printf("out of loop\n");
 
 	close(sockfd);
 
