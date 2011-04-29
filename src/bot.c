@@ -295,6 +295,7 @@ static struct irc_message *recv_msg(int sockfd)
 
 	return msg;
 }
+
 static void load_plugins()
 {
 	struct dirent **namelist;
