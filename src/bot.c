@@ -21,8 +21,8 @@ struct plugin {
 };
 
 static struct plugin plugins[MAX_PLUGINS];
-static int nplugins = 0;
-static int keep_alive = 1, sent_nick = 0, joined = 0;
+static int nplugins = 0, keep_alive = 1, sent_nick = 0, joined = 0, 
+	   waiting_for_ping = 0, sockfd= -1;
 static time_t last_activity = 0;
 
 int has_sent_nick()
@@ -130,7 +130,7 @@ static void free_message(struct irc_message *message)
 		free(message->command);
 	free(message);
 }
-static int send_msg(int sockfd, struct irc_message *message)
+static int send_msg(struct irc_message *message)
 {
 	char buf[IRC_BUF_LENGTH];
 	int idx = 0;
@@ -153,7 +153,7 @@ static int send_msg(int sockfd, struct irc_message *message)
 	return send(sockfd, buf, strlen(buf), 0);
 }
 
-static void process_message(int sockfd, struct irc_message *msg)
+static void process_message(struct irc_message *msg)
 {
 	int i;
 	struct irc_message *responses[MAX_RESPONSE_MSGES];
@@ -184,7 +184,7 @@ static void process_message(int sockfd, struct irc_message *msg)
 				print_message(responses[i]);
 				printf("\n");
 
-				send_msg(sockfd, responses[i]);
+				send_msg(responses[i]);
 				free_message(responses[i]);
 			}
 		}
@@ -212,7 +212,8 @@ static int getaddr(struct addrinfo **result)
 			     &hints, 
 			     result)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-		exit(EXIT_FAILURE);
+		free(addr);
+		return -1;
 	}
 
 	for (p = *result; p != NULL; p = p->ai_next) {
@@ -232,6 +233,7 @@ static int getaddr(struct addrinfo **result)
 
 	if (p == NULL) {
 		fprintf(stderr, "failed to connect\n");
+		free(addr);
 		exit(2);
 	}
 
@@ -243,28 +245,34 @@ static int getaddr(struct addrinfo **result)
 static int connect_to_server()
 {
 	struct addrinfo *addr;
-	int sockfd;
+	int fd, getaddr_res;
 	int conn_result;
 
-	getaddr(&addr);
+	time(&last_activity);
 
-	sockfd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-	if (sockfd < 0) {
+	getaddr_res = getaddr(&addr);
+	if (getaddr_res == -1)
+		return -1;
+
+	fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+	if (fd < 0) {
 		perror("socket");
+		freeaddrinfo(addr);
 		exit(EXIT_FAILURE);
 	}
 
-	conn_result = connect(sockfd, addr->ai_addr, addr->ai_addrlen);
+	conn_result = connect(fd, addr->ai_addr, addr->ai_addrlen);
 	if (conn_result < 0) {
 		fprintf(stderr, "Failure connecting to %s", address);
+		freeaddrinfo(addr);
 		return -1;
 	}
 	freeaddrinfo(addr);
 
-	return sockfd;
+	return fd;
 }
 
-static struct irc_message *recv_msg(int sockfd)
+static struct irc_message *recv_msg()
 {
 	char buf[IRC_BUF_LENGTH];
 	int bytes_rcved, retval;
@@ -272,6 +280,22 @@ static struct irc_message *recv_msg(int sockfd)
 	fd_set rfds;
 	struct timeval tv;
 	struct irc_message *msg;
+
+	if (sockfd == -1) {
+		if (time(NULL) - last_activity > LAG_INTERVAL) {
+			printf("trying to reconnect...\n");
+			sockfd = connect_to_server();
+			if (sockfd == -1) {
+				printf("failed\n");
+				return NULL;
+			} else
+				printf("succeeded!\n");
+		}
+		else {
+			sleep(5);
+			return NULL;
+		}
+	}
 
 	FD_ZERO(&rfds);
 	FD_SET(sockfd, &rfds);
@@ -283,6 +307,27 @@ static struct irc_message *recv_msg(int sockfd)
 		kill_bot(0);
 		return NULL;
 	} else if (!retval) {
+		time_t curr;
+		time(&curr);
+
+		if (curr - last_activity > LAG_INTERVAL) {
+			if (!waiting_for_ping) {
+				struct irc_message *ping_msg;
+				ping_msg = create_message(NULL, "PING",
+						":ping");
+				send_msg(ping_msg);
+				free_message(ping_msg);
+				waiting_for_ping = 1;
+			}
+			else if (curr - last_activity >
+					LAG_INTERVAL + PING_WAIT_TIME) {
+				printf("lost connection...\n");
+				waiting_for_ping = 0;
+				close(sockfd);
+				sockfd = -1;
+				reset();
+			}
+		} 
 		return NULL;
 	}
 
@@ -306,6 +351,8 @@ static struct irc_message *recv_msg(int sockfd)
 	} while (buf[bytes_rcved - 1] != '\n');
 
 	buf[bytes_rcved] = '\0';
+	time(&last_activity);
+	waiting_for_ping = 0;
 
 	prefix = command = params = NULL;
 
@@ -381,7 +428,6 @@ void run_bot()
 {
 	int p_index;
 	struct irc_message *inc_msg;
-	int sockfd;
 
 	load_plugins();
 
@@ -402,7 +448,7 @@ void run_bot()
 		print_message(inc_msg);
 		printf("\n");
 
-		process_message(sockfd, inc_msg);
+		process_message(inc_msg);
 		free_message(inc_msg);
 	}
 

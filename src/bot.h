@@ -6,6 +6,8 @@
 #define   IRC_BUF_LENGTH      	513
 #define   MAX_RESPONSE_MSGES  	10
 #define   MAX_PLUGINS         	50
+#define   LAG_INTERVAL          300
+#define   PING_WAIT_TIME        15
 
 extern char *address, *channel, *nick;
 
@@ -29,6 +31,5 @@ int has_sent_nick();
 int has_joined();
 void set_nick_sent();
 void set_joined();
-void reset();
 struct irc_message *create_message(char *, char *, char *);
 #endif				/* end of include guard: BOT_H */
