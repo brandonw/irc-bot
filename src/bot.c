@@ -22,7 +22,37 @@ struct plugin {
 
 static struct plugin plugins[MAX_PLUGINS];
 static int nplugins = 0;
-static int keep_alive = 1;
+static int keep_alive = 1, sent_nick = 0, joined = 0;
+static time_t last_activity = 0;
+
+int has_sent_nick()
+{
+	return sent_nick;
+}
+
+int has_joined()
+{
+	return joined;
+}
+
+void set_nick_sent()
+{
+	sent_nick = 1;
+	return;
+}
+
+void set_joined()
+{
+	joined = 1;
+	return;
+}
+
+void reset()
+{
+	sent_nick = 0;
+	joined = 0;
+	return;
+}
 
 void print_message(struct irc_message *msg)
 {

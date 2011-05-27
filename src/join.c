@@ -2,7 +2,6 @@
 #include <string.h>
 #include "bot.h"
 
-static int has_joined = 0;
 static const char command[] = "MODE";
 
 char *get_command()
@@ -13,8 +12,8 @@ char *get_command()
 int create_response(struct irc_message *msg, 
 		struct irc_message **messages, int *msg_count)
 {
-	if (!has_joined) {
-		has_joined = 1;
+	if (!has_joined()) {
+		set_joined();
 		messages[0] = create_message(NULL, "JOIN", channel);
 		if (messages[0])
 			*msg_count = 1;

@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include "bot.h"
 
-static int has_sent_nick = 0;
 static const char command[] = "NOTICE";
 
 char *get_command()
@@ -16,7 +15,7 @@ int create_response(struct irc_message *msg,
 {
 	char buf[IRC_BUF_LENGTH];
 
-	if (has_sent_nick)
+	if (has_sent_nick())
 		return 0;
 
 	messages[0] = create_message(NULL, "NICK", nick);
@@ -32,7 +31,7 @@ int create_response(struct irc_message *msg,
 		return -1;
 	}
 
-	has_sent_nick = 1;
+	set_nick_sent();
 	(*msg_count) = 2;
 	return 0;
 }
