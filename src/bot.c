@@ -179,11 +179,6 @@ static void process_message(struct irc_message *msg)
 		if (num_of_responses > 0) {
 			int i;
 			for (i = 0; i < num_of_responses; i++) {
-
-				printf("Sending:\n");
-				print_message(responses[i]);
-				printf("\n");
-
 				send_msg(responses[i]);
 				free_message(responses[i]);
 			}
@@ -443,10 +438,6 @@ void run_bot()
 		if(!inc_msg) {
 			continue;
 		}
-
-		printf("Received:\n");
-		print_message(inc_msg);
-		printf("\n");
 
 		process_message(inc_msg);
 		free_message(inc_msg);
