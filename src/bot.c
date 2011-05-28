@@ -270,7 +270,7 @@ static int connect_to_server()
 static struct irc_message *recv_msg()
 {
 	char buf[IRC_BUF_LENGTH];
-	int bytes_rcved, retval;
+	int bytes_rcved = 0, retval = 0;
 	char *prefix, *command, *params, *tok;
 	fd_set rfds;
 	struct timeval tv;
