@@ -244,7 +244,7 @@ int create_response(struct irc_message *msg,
 				(*msg_count)++;
 		} else {
 			/* pick a map from the union of all pools */
-			int totalmaps, i;
+			int totalmaps = 0, i;
 
 			for (i = 0; i < npools; i++)
 				totalmaps += pools[i]->nmaps;
