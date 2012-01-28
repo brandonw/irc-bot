@@ -7,7 +7,7 @@
 #include <dlfcn.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <sys/time.h>
+#include <time.h>
 #include <sys/select.h>
 #include "bot.h"
 
