@@ -32,4 +32,5 @@ int has_joined();
 void set_nick_sent();
 void set_joined();
 struct irc_message *create_message(char *, char *, char *);
-#endif				/* end of include guard: BOT_H */
+
+#endif
