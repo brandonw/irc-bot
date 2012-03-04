@@ -9,7 +9,7 @@ char *get_command()
 	return (char *)command;
 }
 
-int create_response(struct irc_message *msg, 
+int create_response(struct irc_message *msg,
 		struct irc_message **messages, int *msg_count)
 {
 	char *msg_nick, *msg_message;
@@ -18,9 +18,8 @@ int create_response(struct irc_message *msg,
 	msg_message = strtok(NULL, "") + 1;
 
 	*msg_count = 0;
-	
-	if (strcmp(msg_message, "!quit") == 0 
-			&& strcmp(msg_nick, "brandonw") == 0) {
+
+	if (strcmp(msg_message, "!quit") == 0 && strcmp(msg_nick, "brandonw") == 0) {
 		kill_bot(0);
 		messages[0] = create_message(NULL, "QUIT", NULL);
 		if (messages[0])

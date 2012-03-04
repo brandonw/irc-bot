@@ -49,7 +49,7 @@ int create_response(struct irc_message *msg,
 	} else if (strcmp(tok, "!up") == 0) {
 		karma = (long *)g_hash_table_lookup(karma_hash, n);
 		if (karma == NULL) {
-			karma = malloc(sizeof(long));
+			karma = malloc(sizeof(*karma));
 			*karma = 0;
 			nick = strdup(n);
 			g_hash_table_insert(karma_hash, nick, karma);
@@ -64,7 +64,7 @@ int create_response(struct irc_message *msg,
 	} else if (strcmp(tok, "!down") == 0) {
 		karma = (long *)g_hash_table_lookup(karma_hash, n);
 		if (karma == NULL) {
-			karma = malloc(sizeof(long));
+			karma = malloc(sizeof(*karma));
 			*karma = 0;
 			nick = strdup(n);
 			g_hash_table_insert(karma_hash, n, karma);
@@ -116,7 +116,7 @@ int initialize()
 			free(n);
 			continue;
 		}
-		k = (long *)malloc(sizeof(long));
+		k = (long *)malloc(sizeof(*k));
 		errno = 0;
 		*k = strtol(tok, &endptr, 10);
 

@@ -44,11 +44,11 @@ struct pool *create_pool(char *name, char **maps, int nmaps)
 	struct pool *p;
 	int i;
 
-	p = malloc(sizeof(struct pool));
+	p = malloc(sizeof(*p));
 	p->name = name;
 	p->nmaps = nmaps;
 
-	p->maps = malloc(sizeof(char *) * nmaps);
+	p->maps = malloc(sizeof(*(p->maps)) * nmaps);
 	for (i = 0; i < nmaps; i++)
 		p->maps[i] = maps[i];
 
@@ -93,7 +93,7 @@ int initialize()
 	int n, i;
 
 	npools = 0;
-	pools = malloc(sizeof(struct pool *) * MAX_POOLS);
+	pools = malloc(sizeof(*pools) * MAX_POOLS);
 	n = scandir("../rmap", &namelist, &filter, alphasort);
 
 	if (n < 0) {
@@ -146,7 +146,7 @@ int initialize()
 			"map pools (%d).", MAX_POOLS);
 
 	}
-	
+
 	free(namelist);
 	return 0;
 }
@@ -197,18 +197,18 @@ int create_response(struct irc_message *msg,
 		if (messages[*msg_count])
 			(*msg_count)++;
 
-		sprintf(buf, "%s :%s", 
-				c, 
+		sprintf(buf, "%s :%s",
+				c,
 				"All pools (don't specify a number)");
-		messages[*msg_count] = 
+		messages[*msg_count] =
 			create_message(NULL, "PRIVMSG", buf);
 		if (messages[*msg_count])
 			(*msg_count)++;
 
 		for (i = 0; i < npools; i++) {
-			sprintf(buf, "%s :%d. %s", 
+			sprintf(buf, "%s :%d. %s",
 					c, i+1, pools[i]->name);
-			messages[*msg_count] = 
+			messages[*msg_count] =
 				create_message(NULL, "PRIVMSG", buf);
 			if (messages[*msg_count])
 				(*msg_count)++;
@@ -229,11 +229,11 @@ int create_response(struct irc_message *msg,
 
 		if (n != NULL) {
 			/* pick a map from the specified pool */
-			pn = atoi(n);	
+			pn = atoi(n);
 			if (pn == 0 || pn > npools)
 				return -1;
 			pn--;
-			
+
 			choice = random() % (pools[pn]->nmaps);
 
 			sprintf(buf, "%s :Map: %s",
@@ -256,14 +256,13 @@ int create_response(struct irc_message *msg,
 				i++;
 			}
 
-			sprintf(buf, "%s :Map: %s",
-					c, pools[i]->maps[choice]);
+			sprintf(buf, "%s :Map: %s", c, pools[i]->maps[choice]);
 			messages[*msg_count] =
 				create_message(NULL, "PRIVMSG", buf);
 			if (messages[*msg_count])
 				(*msg_count)++;
 		}
 	}
-	
+
 	return 0;
 }

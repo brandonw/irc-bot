@@ -14,14 +14,14 @@
 struct plugin {
 	void *handle;
 	char *(*get_command) ();
-	int (*create_response) (struct irc_message *, 
+	int (*create_response) (struct irc_message *,
 			struct irc_message **, int *);
 	int (*initialize) ();
 	int (*close) ();
 };
 
 static struct plugin plugins[MAX_PLUGINS];
-static int nplugins = 0, keep_alive = 1, sent_nick = 0, joined = 0, 
+static int nplugins = 0, keep_alive = 1, sent_nick = 0, joined = 0,
 	   waiting_for_ping = 0, sockfd= -1;
 static time_t last_activity = 0;
 
@@ -86,7 +86,7 @@ struct irc_message *create_message(char *prefix, char *command, char *params)
 		return NULL;
 	}
 
-	msg = malloc(sizeof(struct irc_message));
+	msg = malloc(sizeof(*msg));
 	msg->prefix = NULL;
 	msg->command = NULL;
 	msg->params = NULL;
@@ -130,6 +130,7 @@ static void free_message(struct irc_message *message)
 		free(message->command);
 	free(message);
 }
+
 static int send_msg(struct irc_message *message)
 {
 	char buf[IRC_BUF_LENGTH];
@@ -193,7 +194,7 @@ static int getaddr(struct addrinfo **result)
 	int s, sockfd;
 
 	addr = strdup(address);
-	memset(&hints, 0, sizeof(struct addrinfo));
+	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = 0;
@@ -203,8 +204,8 @@ static int getaddr(struct addrinfo **result)
 	port = strtok(NULL, " ");
 
 	if ((s = getaddrinfo(name,
-			     port == NULL ? DEFAULT_PORT : port, 
-			     &hints, 
+			     port == NULL ? DEFAULT_PORT : port,
+			     &hints,
 			     result)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
 		free(addr);
@@ -322,7 +323,7 @@ static struct irc_message *recv_msg()
 				sockfd = -1;
 				reset();
 			}
-		} 
+		}
 		return NULL;
 	}
 
@@ -402,9 +403,9 @@ static void load_plugins()
 
 		/* only count this as a valid plugin if both create_response
 		 * and get_command were found */
-		if (plugins[nplugins].create_response
-		    && plugins[nplugins].get_command)
+		if (plugins[nplugins].create_response && plugins[nplugins].get_command) {
 			nplugins++;
+		}
 
 		free(namelist[n]);
 	}
