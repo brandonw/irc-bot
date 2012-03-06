@@ -24,10 +24,12 @@ int create_response(struct irc_message *msg,
 	messages[1] = create_message(NULL, "USER", buf);
 
 	if (!messages[0] || !messages[1]) {
-		if (messages[0])
-			free_message(0);
-		if (messages[1])
-			free_message(1);
+		if (messages[0]) {
+			free_message(messages[0]);
+		}
+		if (messages[1]) {
+			free_message(messages[1]);
+		}
 		return -1;
 	}
 

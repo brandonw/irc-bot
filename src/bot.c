@@ -102,6 +102,17 @@ struct irc_message *create_message(char *prefix, char *command, char *params)
 	return msg;
 }
 
+void free_message(struct irc_message *message)
+{
+	if (message->prefix)
+		free(message->prefix);
+	if (message->params)
+		free(message->params);
+	if (message->command)
+		free(message->command);
+	free(message);
+}
+
 static int filter(const struct dirent *d)
 {
 	int len;
@@ -118,17 +129,6 @@ static int filter(const struct dirent *d)
 		return 1;
 
 	return 0;
-}
-
-static void free_message(struct irc_message *message)
-{
-	if (message->prefix)
-		free(message->prefix);
-	if (message->params)
-		free(message->params);
-	if (message->command)
-		free(message->command);
-	free(message);
 }
 
 static int send_msg(struct irc_message *message)

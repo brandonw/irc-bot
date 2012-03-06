@@ -23,5 +23,6 @@ int has_joined();
 void set_nick_sent();
 void set_joined();
 struct irc_message *create_message(char *, char *, char *);
+void free_message(struct irc_message *message);
 
 #endif
