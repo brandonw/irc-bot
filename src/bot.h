@@ -1,5 +1,4 @@
 #ifndef BOT_H
-
 #define BOT_H
 
 #define   DEFAULT_PORT        	"6667"
@@ -11,14 +10,6 @@
 
 extern char *address, *channel, *nick;
 
-/*
- * Message and struct functions
- */
-
-/*
- * This struct should only be used when creating the return value type
- * of a plugin.
- */
 struct irc_message {
 	char *prefix;
 	char *command;
