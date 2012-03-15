@@ -32,12 +32,18 @@ int create_response(struct irc_message *msg,
 	msg_message = strtok(NULL, "") + 1;
 	tok = strtok(msg_message, " ");
 
+	if (strcmp(tok, "!karma") != 0 && strcmp(tok, "!up") != 0 &&
+			strcmp(tok, "!down") != 0)
+	{
+		return 0;
+	}
+
 	n = strtok(NULL, " ");
 	if (n == NULL || strlen(n) > MAX_NICK_LENGTH) {
 		if (n == NULL)
-			log_warn("Missing nick in karma plugin.\n");
+			log_warn("Missing nick in karma plugin.");
 		else
-			log_warn("%s is too long of a nick.\n", n);
+			log_warn("%s is too long of a nick.", n);
 		return 0;
 	}
 
@@ -49,7 +55,7 @@ int create_response(struct irc_message *msg,
 			k = *karma;
 		}
 
-		debug("Retrieving %ld karma for %s\n", k, n);
+		debug("Retrieving %ld karma for %s", k, n);
 
 		sprintf(buf, "%s :%s has %ld karma", channel, n, k);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
@@ -65,7 +71,7 @@ int create_response(struct irc_message *msg,
 		}
 		(*karma)++;
 
-		debug("Upping %s karma to %ld\n", n, *karma);
+		debug("Upping %s karma to %ld", n, *karma);
 
 		sprintf(buf, "%s :%s has been upvoted to %ld karma",
 			channel, n, *karma);
@@ -82,7 +88,7 @@ int create_response(struct irc_message *msg,
 		}
 		(*karma)--;
 
-		debug("Reducing %s karma to %ld\n", n, *karma);
+		debug("Reducing %s karma to %ld", n, *karma);
 
 		sprintf(buf, "%s :%s has been downvoted to %ld karma",
 			channel, n, *karma);
@@ -101,14 +107,13 @@ int initialize()
 	int errno, lineno;
 	char *n;
 	long *k;
-	char *file;
 
 	karma_hash = g_hash_table_new(g_str_hash, g_str_equal);
 	lineno = 1;
 
 	fp = fopen(KARMA_FILE, "r");
 	if (!fp) {
-		log_err("Failed to open %s\n", KARMA_FILE);
+		log_info("Failed to open %s", KARMA_FILE);
 		return -1;
 	}
 
@@ -116,18 +121,18 @@ int initialize()
 		char *tok, *endptr;
 
 		if (strrchr(buf, '\n') == NULL) {
-			log_warn("%s:%d too long to process.\n", KARMA_FILE, lineno);
+			log_warn("%s:%d too long to process.", KARMA_FILE, lineno);
 			continue;
 		}
 
 		tok = strtok(buf, "\t ");
 		if (tok == NULL) {
-			log_warn("%s:%d invalid.\n", KARMA_FILE, lineno);
+			log_warn("%s:%d invalid.", KARMA_FILE, lineno);
 			lineno++;
 			continue;
 		}
 		if (strlen(tok) > MAX_NICK_LENGTH) {
-			log_warn("%s:%d nick is too long.\n", KARMA_FILE, lineno);
+			log_warn("%s:%d nick is too long.", KARMA_FILE, lineno);
 			lineno++;
 			continue;
 		}
@@ -136,7 +141,7 @@ int initialize()
 		tok = strtok(NULL, "\t ");
 		if (tok == NULL)
 		{
-			log_warn("%s:%d karma unspecified.\n", KARMA_FILE, lineno);
+			log_warn("%s:%d karma unspecified.", KARMA_FILE, lineno);
 			free(n);
 			lineno++;
 			continue;
@@ -147,19 +152,19 @@ int initialize()
 
 		if ((errno == ERANGE && (*k == LONG_MAX || *k == LONG_MIN))
 				|| (errno != 0 && *k == 0)) {
-			log_err("%s:%d karma outside of range or invalid.\n",
+			log_err("%s:%d karma outside of range or invalid.",
 					KARMA_FILE, lineno);
 			lineno++;
 			continue;
 		}
 		if (endptr == tok) {
-			log_err("%s:%d missing karma.\n", KARMA_FILE, lineno);
+			log_err("%s:%d missing karma.", KARMA_FILE, lineno);
 			lineno++;
 			continue;
 		}
 
 		g_hash_table_insert(karma_hash, (gpointer) n, (gpointer) k);
-		debug("Inserted %s with %ld karma in to karma hashmap.\n", n, k)
+		debug("Inserted %s with %ld karma in to karma hashmap.", n, *k);
 		lineno++;
 	}
 	fclose(fp);
@@ -168,26 +173,23 @@ int initialize()
 
 int close()
 {
-	GList *key_list;
 	GList *keys;
 	FILE *fp;
 	char *nick;
 	long *karma;
 
-	key_list = g_hash_table_get_keys(karma_hash);
-	keys = key_list;
-	fp = fopen("karma.txt", "w");
+	keys = g_hash_table_get_keys(karma_hash);
+	fp = fopen(KARMA_FILE, "w");
 	if (fp == NULL) {
-		log_err("Failed to open karma.txt for writing.\n");
+		log_err("Failed to open %s for writing.", KARMA_FILE);
 	}
 
 	while (keys != NULL) {
-		nick = (char *)keys->data;
-		karma = (long *)g_hash_table_lookup(karma_hash,
-				(gconstpointer) nick);
+		nick = keys->data;
+		karma = g_hash_table_lookup(karma_hash, nick);
 		if (fp != NULL) {
-			debug("Writing %s with %ld karma to karma.txt\n",
-					nick, karma);
+			debug("Writing %s with %ld karma to %s",
+					nick, *karma, KARMA_FILE);
 			fprintf(fp, "%s\t%ld\n", nick, *karma);
 		}
 
@@ -196,7 +198,7 @@ int close()
 		free(karma);
 		keys = g_list_next(keys);
 	}
-	g_list_free(key_list);
+	g_list_free(keys);
 	g_hash_table_destroy(karma_hash);
 
 	if (fp == NULL)

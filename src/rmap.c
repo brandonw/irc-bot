@@ -55,7 +55,7 @@ struct pool *create_pool(char *name, char **maps, int nmaps)
 	for (i = 0; i < nmaps; i++)
 		p->maps[i] = maps[i];
 
-	log_info("Created pool %s\n", name);
+	log_info("Created pool %s", name);
 	return p;
 }
 
@@ -101,7 +101,7 @@ int initialize()
 	n = scandir("../rmap", &namelist, &filter, alphasort);
 
 	if (n < 0) {
-		log_err("Error scanning directory for plugins: %s\n",
+		log_err("Error scanning directory for plugins: %s",
 				strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -112,7 +112,7 @@ int initialize()
 
 		fp = fopen(location, "r");
 		if (!fp) {
-			log_warn("%s: Error loading  maps: %s\n", location,
+			log_warn("%s: Error loading  maps: %s", location,
 					strerror(errno));
 			continue;
 		}
@@ -122,14 +122,14 @@ int initialize()
 			char *tok;
 
 			if (strrchr(buf, '\n') == NULL) {
-				log_warn("%s:%d was too long to load.\n",
+				log_warn("%s:%d was too long to load.",
 						location, i + 1);
 				continue;
 			}
 
 			tok = strtok(buf, "\r\n");
 			if (tok == NULL) {
-				log_warn("%s:%d blank line ignored.\n",
+				log_warn("%s:%d blank line ignored.",
 						location, i + 1);
 				continue;
 			}
@@ -151,14 +151,14 @@ int initialize()
 			npools++;
 		}
 		else {
-			log_warn("%s had no maps listed.\n", location);
+			log_warn("%s had no maps listed.", location);
 		}
 
 		free(namelist[n]);
 	}
 
 	if (npools == MAX_POOLS) {
-		log_warn("Too many map pools; truncating remaining pools.\n");
+		log_warn("Too many map pools; truncating remaining pools.");
 	}
 
 	free(namelist);

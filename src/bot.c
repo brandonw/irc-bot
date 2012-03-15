@@ -71,7 +71,7 @@ struct irc_message *create_message(char *prefix, char *command, char *params)
 
 	if (msg_size >= IRC_BUF_LENGTH) {
 		log_err("Attempted to create a message with:\nprefix:%s\n"
-			"command:%s\nparams:%s\nwith a total size of %d\n",
+			"command:%s\nparams:%s\nwith a total size of %d",
 			prefix,
 			command,
 			params,
@@ -132,8 +132,7 @@ static int send_msg(struct irc_message *message)
 	debug("Sending message--\n"
 			"prefix:  \"%s\"\n"
 			"command: \"%s\"\n"
-			"params:  \"%s\"\n"
-			"--\n",
+			"params:  \"%s\"",
 			message->prefix, message->command, message->params);
 
 	if (message->prefix) {
@@ -179,7 +178,7 @@ static void process_message(struct irc_message *msg)
 
 		if (num_of_responses > 0) {
 			int i;
-			debug("Plugin acting on this message.\n");
+			debug("Plugin acting on this message.");
 			for (i = 0; i < num_of_responses; i++) {
 				send_msg(responses[i]);
 				free_message(responses[i]);
@@ -208,7 +207,7 @@ static int getaddr(struct addrinfo **result)
 			     port == NULL ? DEFAULT_PORT : port,
 			     &hints,
 			     result)) != 0) {
-		log_err("Error retrieving address info: %s\n", gai_strerror(s));
+		log_err("Error retrieving address info: %s", gai_strerror(s));
 		free(addr);
 		return -1;
 	}
@@ -216,13 +215,13 @@ static int getaddr(struct addrinfo **result)
 	for (p = *result; p != NULL; p = p->ai_next) {
 		if ((sockfd = socket(p->ai_family, p->ai_socktype,
 				     p->ai_protocol)) == -1) {
-			log_err("Error creating socket: %s\n",
+			log_err("Error creating socket: %s",
 					strerror(errno));
 			continue;
 		}
 		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
 			close(sockfd);
-			log_err("Error connecting to server: %s\n",
+			log_err("Error connecting to server: %s",
 					strerror(errno));
 			continue;
 		}
@@ -231,7 +230,7 @@ static int getaddr(struct addrinfo **result)
 	}
 
 	if (p == NULL) {
-		log_err("Failed to connect.\n");
+		log_err("Failed to connect.");
 		free(addr);
 		exit(2);
 	}
@@ -255,14 +254,14 @@ static int connect_to_server()
 
 	fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 	if (fd < 0) {
-		log_err("Error creating socket: %s\n", strerror(errno));
+		log_err("Error creating socket: %s", strerror(errno));
 		freeaddrinfo(addr);
 		exit(EXIT_FAILURE);
 	}
 
 	conn_result = connect(fd, addr->ai_addr, addr->ai_addrlen);
 	if (conn_result < 0) {
-		log_err("Error connecting to server: %s\n",
+		log_err("Error connecting to server: %s",
 				strerror(errno));
 		freeaddrinfo(addr);
 		return -1;
@@ -283,13 +282,13 @@ static struct irc_message *recv_msg()
 
 	if (sockfd == -1) {
 		if (time(NULL) - last_activity > LAG_INTERVAL) {
-			log_info("Trying to reconnect...\n");
+			log_info("Trying to reconnect...");
 			sockfd = connect_to_server();
 			if (sockfd == -1) {
-				log_info("Failed\n");
+				log_info("Failed");
 				return NULL;
 			} else
-				log_info("Succeeded!\n");
+				log_info("Succeeded!");
 		}
 		else {
 			sleep(5);
@@ -321,7 +320,7 @@ static struct irc_message *recv_msg()
 			}
 			else if (curr - last_activity >
 					LAG_INTERVAL + PING_WAIT_TIME) {
-				log_info("Lost connection...\n");
+				log_info("Lost connection...");
 				waiting_for_ping = 0;
 				close(sockfd);
 				sockfd = -1;
@@ -336,13 +335,13 @@ static struct irc_message *recv_msg()
 
 		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
 		if (bytes_read == 0) {
-			log_info("Connection closed.\n");
+			log_info("Connection closed.");
 			kill_bot(0);
 			return NULL;
 		}
 
 		if (bytes_read == -1) {
-			log_err("Error receiving packets: %s\n",
+			log_err("Error receiving packets: %s",
 					strerror(errno));
 			kill_bot(1);
 			return NULL;
@@ -373,8 +372,7 @@ static struct irc_message *recv_msg()
 	debug("Received message--\n"
 			"prefix:  \"%s\"\n"
 			"command: \"%s\"\n"
-			"params:  \"%s\"\n"
-			"--\n",
+			"params:  \"%s\"",
 			msg->prefix, msg->command, msg->params);
 
 	return msg;
@@ -400,12 +398,14 @@ static void load_plugins()
 		char location[100] = "plugins/";
 		strcpy(location + 8, namelist[n]->d_name);
 
-		debug("Testing %s for plugin.\n", location);
+		debug("Testing %s for plugin.", location);
 
 		handle = dlopen(location, RTLD_LAZY);
 
 		if (!handle) {
-			fprintf(stderr, "%s\n", dlerror());
+			log_err("Error dynamically linking %s: %s",
+					location,
+					dlerror());
 			exit(EXIT_FAILURE);
 		}
 
@@ -457,7 +457,7 @@ void run_bot()
 		free_message(inc_msg);
 	}
 
-	debug("Cleaning up memory.\n");
+	debug("Cleaning up memory.");
 
 	close(sockfd);
 
@@ -471,6 +471,6 @@ void run_bot()
 
 void kill_bot(int p)
 {
-	debug("Killing bot...\n");
+	debug("Killing bot...");
 	keep_alive = 0;
 }

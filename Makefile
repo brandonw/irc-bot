@@ -55,7 +55,7 @@ all: $(BIN_DIR)/$(BIN_NAME) irc-plugins
 
 $(BIN_DIR)/$(BIN_NAME): $(OBJS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -rdynamic $(PKG_GLIB) $^ -o $@ -ldl
-	
+
 $(OBJS) $(PLUGINS_O): bot.h
 
 .PHONY: irc-plugins
@@ -87,11 +87,11 @@ $(PLUG_SO_DIR):
 	mkdir -p $(PLUG_SO_DIR)
 
 .PHONY: clean
-clean : 
+clean :
 	$(RM) -r $(BIN_DIR) $(OBJ_DIR) cscope.out
 
 .PHONY: debug
-debug: CFLAGS += -g -O0
+debug: CFLAGS += -g -O0 -DDEBUG
 debug: all
 
 cscope.out: $(SRC) $(PLUG_SRC)

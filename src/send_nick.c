@@ -19,8 +19,8 @@ int create_response(struct irc_message *msg,
 	if (has_sent_nick())
 		return 0;
 
-	log_info("Received NOTICE indicating connection is active, sending NICK"
-			"and USER information.");
+	log_info("Received NOTICE indicating connection is active, sending "
+			"NICK and USER information.");
 
 	messages[0] = create_message(NULL, "NICK", nick);
 
