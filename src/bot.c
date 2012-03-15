@@ -9,7 +9,9 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/select.h>
+#include <errno.h>
 #include "bot.h"
+#include "debug.h"
 
 struct plugin {
 	void *handle;
@@ -54,14 +56,6 @@ void reset()
 	return;
 }
 
-void print_message(struct irc_message *msg)
-{
-	printf("PREFIX:  \"%s\"\n", msg->prefix);
-	printf("COMMAND: \"%s\"\n", msg->command);
-	printf("PARAMS:  \"%s\"\n", msg->params);
-	return;
-}
-
 struct irc_message *create_message(char *prefix, char *command, char *params)
 {
 	size_t msg_size = 0;
@@ -76,8 +70,7 @@ struct irc_message *create_message(char *prefix, char *command, char *params)
 		msg_size += strlen(params);
 
 	if (msg_size >= IRC_BUF_LENGTH) {
-		fprintf(stderr,
-			"Attempted to create a message with:\nprefix:%s\n"
+		log_err("Attempted to create a message with:\nprefix:%s\n"
 			"command:%s\nparams:%s\nwith a total size of %d\n",
 			prefix,
 			command,
@@ -136,6 +129,13 @@ static int send_msg(struct irc_message *message)
 	char buf[IRC_BUF_LENGTH];
 	int idx = 0;
 
+	debug("Sending message--\n"
+			"prefix:  \"%s\"\n"
+			"command: \"%s\"\n"
+			"params:  \"%s\"\n"
+			"--\n",
+			message->prefix, message->command, message->params);
+
 	if (message->prefix) {
 		sprintf(buf + idx, "%s ", message->prefix);
 		idx += strlen(message->prefix) + 1;
@@ -179,6 +179,7 @@ static void process_message(struct irc_message *msg)
 
 		if (num_of_responses > 0) {
 			int i;
+			debug("Plugin acting on this message.\n");
 			for (i = 0; i < num_of_responses; i++) {
 				send_msg(responses[i]);
 				free_message(responses[i]);
@@ -207,7 +208,7 @@ static int getaddr(struct addrinfo **result)
 			     port == NULL ? DEFAULT_PORT : port,
 			     &hints,
 			     result)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+		log_err("Error retrieving address info: %s\n", gai_strerror(s));
 		free(addr);
 		return -1;
 	}
@@ -215,12 +216,14 @@ static int getaddr(struct addrinfo **result)
 	for (p = *result; p != NULL; p = p->ai_next) {
 		if ((sockfd = socket(p->ai_family, p->ai_socktype,
 				     p->ai_protocol)) == -1) {
-			perror("socket");
+			log_err("Error creating socket: %s\n",
+					strerror(errno));
 			continue;
 		}
 		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
 			close(sockfd);
-			perror("connect");
+			log_err("Error connecting to server: %s\n",
+					strerror(errno));
 			continue;
 		}
 
@@ -228,7 +231,7 @@ static int getaddr(struct addrinfo **result)
 	}
 
 	if (p == NULL) {
-		fprintf(stderr, "failed to connect\n");
+		log_err("Failed to connect.\n");
 		free(addr);
 		exit(2);
 	}
@@ -252,14 +255,15 @@ static int connect_to_server()
 
 	fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 	if (fd < 0) {
-		perror("socket");
+		log_err("Error creating socket: %s\n", strerror(errno));
 		freeaddrinfo(addr);
 		exit(EXIT_FAILURE);
 	}
 
 	conn_result = connect(fd, addr->ai_addr, addr->ai_addrlen);
 	if (conn_result < 0) {
-		fprintf(stderr, "Failure connecting to %s", address);
+		log_err("Error connecting to server: %s\n",
+				strerror(errno));
 		freeaddrinfo(addr);
 		return -1;
 	}
@@ -279,13 +283,13 @@ static struct irc_message *recv_msg()
 
 	if (sockfd == -1) {
 		if (time(NULL) - last_activity > LAG_INTERVAL) {
-			printf("trying to reconnect...\n");
+			log_info("Trying to reconnect...\n");
 			sockfd = connect_to_server();
 			if (sockfd == -1) {
-				printf("failed\n");
+				log_info("Failed\n");
 				return NULL;
 			} else
-				printf("succeeded!\n");
+				log_info("Succeeded!\n");
 		}
 		else {
 			sleep(5);
@@ -317,7 +321,7 @@ static struct irc_message *recv_msg()
 			}
 			else if (curr - last_activity >
 					LAG_INTERVAL + PING_WAIT_TIME) {
-				printf("lost connection...\n");
+				log_info("Lost connection...\n");
 				waiting_for_ping = 0;
 				close(sockfd);
 				sockfd = -1;
@@ -332,13 +336,14 @@ static struct irc_message *recv_msg()
 
 		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
 		if (bytes_read == 0) {
-			fprintf(stderr, "Connection closed.\n");
+			log_info("Connection closed.\n");
 			kill_bot(0);
 			return NULL;
 		}
 
 		if (bytes_read == -1) {
-			perror("recv");
+			log_err("Error receiving packets: %s\n",
+					strerror(errno));
 			kill_bot(1);
 			return NULL;
 		}
@@ -365,6 +370,12 @@ static struct irc_message *recv_msg()
 	}
 
 	msg = create_message(prefix, command, params);
+	debug("Received message--\n"
+			"prefix:  \"%s\"\n"
+			"command: \"%s\"\n"
+			"params:  \"%s\"\n"
+			"--\n",
+			msg->prefix, msg->command, msg->params);
 
 	return msg;
 }
@@ -375,9 +386,12 @@ static void load_plugins()
 	void *handle;
 	int n;
 
+	debug("Loading plugins.");
+
 	n = scandir("plugins", &namelist, &filter, alphasort);
 	if (n < 0) {
-		perror("scandir");
+		log_err("Error scanning for plugins: %s",
+				strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -385,6 +399,8 @@ static void load_plugins()
 
 		char location[100] = "plugins/";
 		strcpy(location + 8, namelist[n]->d_name);
+
+		debug("Testing %s for plugin.\n", location);
 
 		handle = dlopen(location, RTLD_LAZY);
 
@@ -404,18 +420,15 @@ static void load_plugins()
 		/* only count this as a valid plugin if both create_response
 		 * and get_command were found */
 		if (plugins[nplugins].create_response && plugins[nplugins].get_command) {
+			log_info("Loaded plugin file %s", location);
 			nplugins++;
 		}
 
 		free(namelist[n]);
 	}
 
-	if (nplugins == MAX_PLUGINS) {
-		fprintf(stderr,
-			"Attemped to load more than the max allowable number of"
-			"plugins (%d).", MAX_PLUGINS);
-
-	}
+	if (nplugins == MAX_PLUGINS)
+		log_warn("Attempted to load too many plugins.");
 
 	free(namelist);
 }
@@ -444,6 +457,8 @@ void run_bot()
 		free_message(inc_msg);
 	}
 
+	debug("Cleaning up memory.\n");
+
 	close(sockfd);
 
 	for (p_index = 0; p_index < nplugins; p_index++) {
@@ -456,5 +471,6 @@ void run_bot()
 
 void kill_bot(int p)
 {
+	debug("Killing bot...\n");
 	keep_alive = 0;
 }
