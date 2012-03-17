@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "bot.h"
+#include "string.h"
+#include "errno.h"
+#include "debug.h"
 
 #define   MAX_MAPS_PER_POOL	25
 #define   MAX_POOLS		MAX_RESPONSE_MSGES - 2
@@ -52,6 +55,7 @@ struct pool *create_pool(char *name, char **maps, int nmaps)
 	for (i = 0; i < nmaps; i++)
 		p->maps[i] = maps[i];
 
+	log_info("Created pool %s", name);
 	return p;
 }
 
@@ -97,7 +101,8 @@ int initialize()
 	n = scandir("../rmap", &namelist, &filter, alphasort);
 
 	if (n < 0) {
-		perror("scandir");
+		log_err("Error scanning directory for plugins: %s",
+				strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -106,19 +111,28 @@ int initialize()
 		strcpy(location + 8, namelist[n]->d_name);
 
 		fp = fopen(location, "r");
-		if (!fp)
-			return 0;
+		if (!fp) {
+			log_warn("%s: Error loading  maps: %s", location,
+					strerror(errno));
+			continue;
+		}
 
 		i = 0;
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
 			char *tok;
 
-			if (strrchr(buf, '\n') == NULL)
+			if (strrchr(buf, '\n') == NULL) {
+				log_warn("%s:%d was too long to load.",
+						location, i + 1);
 				continue;
+			}
 
 			tok = strtok(buf, "\r\n");
-			if (tok == NULL)
+			if (tok == NULL) {
+				log_warn("%s:%d blank line ignored.",
+						location, i + 1);
 				continue;
+			}
 			maps[i]= strdup(tok);
 			i++;
 
@@ -136,15 +150,15 @@ int initialize()
 			pools[npools] = p;
 			npools++;
 		}
+		else {
+			log_warn("%s had no maps listed.", location);
+		}
 
 		free(namelist[n]);
 	}
 
 	if (npools == MAX_POOLS) {
-		fprintf(stderr,
-			"Attemped to load more than the max allowable number of"
-			"map pools (%d).", MAX_POOLS);
-
+		log_warn("Too many map pools; truncating remaining pools.");
 	}
 
 	free(namelist);
