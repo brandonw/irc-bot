@@ -24,9 +24,8 @@ int create_response(struct irc_message *msg,
 		struct irc_message **messages, int *msg_count)
 {
 	char buf[IRC_BUF_LENGTH];
-	char *msg_message, *tok, *nick, *n;
-	long *karma;
-	long k = 0;
+	char *msg_message, *tok, *msg_nick;
+	long *k;
 
 	strtok(msg->params, " ");
 	msg_message = strtok(NULL, "") + 1;
@@ -38,60 +37,65 @@ int create_response(struct irc_message *msg,
 		return 0;
 	}
 
-	n = strtok(NULL, " ");
-	if (n == NULL || strlen(n) > MAX_NICK_LENGTH) {
-		if (n == NULL)
+	msg_nick = strtok(NULL, " ");
+	if (msg_nick == NULL || strlen(msg_nick) > MAX_NICK_LENGTH) {
+		if (msg_nick == NULL)
 			log_warn("Missing nick in karma plugin.");
 		else
-			log_warn("%s is too long of a nick.", n);
+			log_warn("%s is too long of a nick.", msg_nick);
 		return 0;
 	}
 
 	*msg_count = 0;
 
 	if (strcmp(tok, "!karma") == 0) {
-		karma = (long *)g_hash_table_lookup(karma_hash, n);
-		if (karma != NULL) {
-			k = *karma;
+		long tmp_k = 0;
+		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
+		if (k != NULL) {
+			tmp_k = *k;
 		}
 
-		debug("Retrieving %ld karma for %s", k, n);
+		debug("Retrieving %ld karma for %s", tmp_k, msg_nick);
 
-		sprintf(buf, "%s :%s has %ld karma", channel, n, k);
+		sprintf(buf, "%s :%s has %ld karma", channel, msg_nick, tmp_k);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
 		if (messages[0])
 			*msg_count = 1;
 	} else if (strcmp(tok, "!up") == 0) {
-		karma = (long *)g_hash_table_lookup(karma_hash, n);
-		if (karma == NULL) {
-			karma = malloc(sizeof(*karma));
-			*karma = 0;
-			nick = strdup(n);
-			g_hash_table_insert(karma_hash, nick, karma);
-		}
-		(*karma)++;
+		char *n;
 
-		debug("Upping %s karma to %ld", n, *karma);
+		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
+		if (k == NULL) {
+			k = malloc(sizeof(*k));
+			*k = 0;
+			n = strdup(msg_nick);
+			g_hash_table_insert(karma_hash, n, k);
+		}
+		(*k)++;
+
+		debug("Upping %s karma to %ld", msg_nick, *k);
 
 		sprintf(buf, "%s :%s has been upvoted to %ld karma",
-			channel, n, *karma);
+			channel, msg_nick, *k);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
 		if (messages[0])
 			*msg_count = 1;
 	} else if (strcmp(tok, "!down") == 0) {
-		karma = (long *)g_hash_table_lookup(karma_hash, n);
-		if (karma == NULL) {
-			karma = malloc(sizeof(*karma));
-			*karma = 0;
-			nick = strdup(n);
-			g_hash_table_insert(karma_hash, n, karma);
-		}
-		(*karma)--;
+		char *n;
 
-		debug("Reducing %s karma to %ld", n, *karma);
+		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
+		if (k == NULL) {
+			k = malloc(sizeof(*k));
+			*k = 0;
+			n = strdup(msg_nick);
+			g_hash_table_insert(karma_hash, n, k);
+		}
+		(*k)--;
+
+		debug("Reducing %s karma to %ld", msg_nick, *k);
 
 		sprintf(buf, "%s :%s has been downvoted to %ld karma",
-			channel, n, *karma);
+			channel, msg_nick, *k);
 		messages[0] = create_message(NULL, "PRIVMSG", buf);
 		if (messages[0])
 			*msg_count = 1;
