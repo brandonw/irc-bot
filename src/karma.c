@@ -125,7 +125,8 @@ int initialize()
 		char *tok, *endptr;
 
 		if (strrchr(buf, '\n') == NULL) {
-			log_warn("%s:%d too long to process.", KARMA_FILE, lineno);
+			log_warn("%s:%d too long to process.",
+					KARMA_FILE, lineno);
 			continue;
 		}
 
@@ -136,7 +137,8 @@ int initialize()
 			continue;
 		}
 		if (strlen(tok) > MAX_NICK_LENGTH) {
-			log_warn("%s:%d nick is too long.", KARMA_FILE, lineno);
+			log_warn("%s:%d nick is too long.",
+					KARMA_FILE, lineno);
 			lineno++;
 			continue;
 		}
@@ -145,7 +147,8 @@ int initialize()
 		tok = strtok(NULL, "\t ");
 		if (tok == NULL)
 		{
-			log_warn("%s:%d karma unspecified.", KARMA_FILE, lineno);
+			log_warn("%s:%d karma unspecified.",
+					KARMA_FILE, lineno);
 			free(n);
 			lineno++;
 			continue;

@@ -20,7 +20,8 @@ int create_response(struct irc_message *msg,
 
 	*msg_count = 0;
 
-	if (strcmp(msg_message, "!quit") == 0 && strcmp(msg_nick, "brandonw") == 0) {
+	if (strcmp(msg_message, "!quit") == 0 &&
+			strcmp(msg_nick, "brandonw") == 0) {
 		log_info("Received `!quit', quitting...");
 		kill_bot(0);
 		messages[0] = create_message(NULL, "QUIT", NULL);

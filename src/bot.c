@@ -419,7 +419,8 @@ static void load_plugins()
 
 		/* only count this as a valid plugin if both create_response
 		 * and get_command were found */
-		if (plugins[nplugins].create_response && plugins[nplugins].get_command) {
+		if (plugins[nplugins].create_response &&
+				plugins[nplugins].get_command) {
 			log_info("Loaded plugin file %s", location);
 			nplugins++;
 		}
