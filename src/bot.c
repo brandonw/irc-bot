@@ -27,28 +27,6 @@ static int nplugins = 0, keep_alive = 1, sent_nick = 0, joined = 0,
 	   waiting_for_ping = 0, sockfd= -1;
 static time_t last_activity = 0;
 
-int has_sent_nick()
-{
-	return sent_nick;
-}
-
-int has_joined()
-{
-	return joined;
-}
-
-void set_nick_sent()
-{
-	sent_nick = 1;
-	return;
-}
-
-void set_joined()
-{
-	joined = 1;
-	return;
-}
-
 void reset()
 {
 	sent_nick = 0;
@@ -158,6 +136,48 @@ static void process_message(struct irc_message *msg)
 	int i;
 	struct irc_message *responses[MAX_RESPONSE_MSGES];
 	int num_of_responses;
+
+	if (!joined && !strcmp("MODE", msg->command)) {
+		struct irc_message *join_msg;
+		log_info("Sending JOIN message.");
+		join_msg = create_message(NULL, "JOIN", channel);
+		send_msg(join_msg);
+		free_message(join_msg);
+
+		joined = 1;
+		return;
+	}
+
+	if (!sent_nick && !strcmp("NOTICE", msg->command)) {
+		struct irc_message *id_msg;
+		char buf[IRC_BUF_LENGTH];
+
+		log_info("Received NOTICE indicating connection is active, "
+				"sending NICK and USER information.");
+
+		id_msg = create_message(NULL, "NICK", nick);
+		send_msg(id_msg);
+		free_message(id_msg);
+
+		sprintf(buf, "USER %s %s 8 * : %s", nick, nick, nick);
+		id_msg = create_message(NULL, "USER", buf);
+		send_msg(id_msg);
+		free_message(id_msg);
+
+		sent_nick = 1;
+		return;
+	}
+
+	if (!strcmp("PING", msg->command)) {
+		struct irc_message *pong_msg;
+
+		log_info("Received PING, sending PONG.");
+		pong_msg = create_message(NULL, "PONG", msg->params);
+		send_msg(pong_msg);
+		free_message(pong_msg);
+
+		return;
+	}
 
 	for (i = 0; i < nplugins; i++) {
 		struct irc_message *temp_msg;

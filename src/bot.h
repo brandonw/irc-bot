@@ -18,10 +18,6 @@ struct irc_message {
 
 void run_bot();
 void kill_bot(int p);
-int has_sent_nick();
-int has_joined();
-void set_nick_sent();
-void set_joined();
 struct irc_message *create_message(char *, char *, char *);
 void free_message(struct irc_message *message);
 
