@@ -104,7 +104,7 @@ int create_response(struct irc_message *msg,
 	return 0;
 }
 
-int initialize()
+int plug_init()
 {
 	FILE *fp;
 	char buf[MAX_KARMA_LINE_LENGTH];
@@ -178,7 +178,7 @@ int initialize()
 	return 0;
 }
 
-int close()
+int plug_close()
 {
 	GList *keys;
 	FILE *fp;

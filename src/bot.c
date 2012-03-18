@@ -18,8 +18,8 @@ struct plugin {
 	char *(*get_command) ();
 	int (*create_response) (struct irc_message *,
 			struct irc_message **, int *);
-	int (*initialize) ();
-	int (*close) ();
+	int (*plug_init) ();
+	int (*plug_close) ();
 };
 
 static struct plugin plugins[MAX_PLUGINS];
@@ -414,8 +414,8 @@ static void load_plugins()
 		plugins[nplugins].get_command = dlsym(handle, "get_command");
 		plugins[nplugins].create_response =
 		    dlsym(handle, "create_response");
-		plugins[nplugins].initialize = dlsym(handle, "initialize");
-		plugins[nplugins].close = dlsym(handle, "close");
+		plugins[nplugins].plug_init = dlsym(handle, "plug_init");
+		plugins[nplugins].plug_close = dlsym(handle, "plug_close");
 
 		/* only count this as a valid plugin if both create_response
 		 * and get_command were found */
@@ -442,8 +442,8 @@ void run_bot()
 	load_plugins();
 
 	for (p_index = 0; p_index < nplugins; p_index++) {
-		if (plugins[p_index].initialize)
-			plugins[p_index].initialize();
+		if (plugins[p_index].plug_init)
+			plugins[p_index].plug_init();
 	}
 
 	sockfd = connect_to_server();
@@ -463,8 +463,8 @@ void run_bot()
 	close(sockfd);
 
 	for (p_index = 0; p_index < nplugins; p_index++) {
-		if (plugins[p_index].close) {
-			plugins[p_index].close();
+		if (plugins[p_index].plug_close) {
+			plugins[p_index].plug_close();
 		}
 		dlclose(plugins[p_index].handle);
 	}

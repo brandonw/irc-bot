@@ -88,7 +88,7 @@ char *get_command()
 	return (char *)command;
 }
 
-int initialize()
+int plug_init()
 {
 	FILE *fp;
 	char buf[100];
@@ -165,7 +165,7 @@ int initialize()
 	return 0;
 }
 
-int close()
+int plug_close()
 {
 	int i;
 
@@ -228,8 +228,8 @@ int create_response(struct irc_message *msg,
 				(*msg_count)++;
 		}
 	} else if (strcmp(command, "!reload") == 0) {
-		close();
-		initialize();
+		plug_close();
+		plug_init();
 
 		sprintf(buf, "%s :%s",
 				c,
