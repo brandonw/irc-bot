@@ -107,10 +107,10 @@ static int send_msg(struct irc_message *message)
 	char buf[IRC_BUF_LENGTH];
 	int idx = 0;
 
-	debug("Sending message--\n"
-			"prefix:  \"%s\"\n"
-			"command: \"%s\"\n"
-			"params:  \"%s\"",
+	debug("\n%%Sending message--\n"
+			"%%prefix:  \"%s\"\n"
+			"%%command: \"%s\"\n"
+			"%%params:  \"%s\"",
 			message->prefix, message->command, message->params);
 
 	if (message->prefix) {
@@ -389,10 +389,10 @@ static struct irc_message *recv_msg()
 	}
 
 	msg = create_message(prefix, command, params);
-	debug("Received message--\n"
-			"prefix:  \"%s\"\n"
-			"command: \"%s\"\n"
-			"params:  \"%s\"",
+	debug("\n%%Received message--\n"
+			"%%prefix:  \"%s\"\n"
+			"%%command: \"%s\"\n"
+			"%%params:  \"%s\"",
 			msg->prefix, msg->command, msg->params);
 
 	return msg;
