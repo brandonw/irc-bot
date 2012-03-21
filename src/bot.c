@@ -21,6 +21,7 @@ struct plugin {
 			struct irc_message **, int *);
 	int (*plug_init) ();
 	int (*plug_close) ();
+	char *(*get_plug_name) ();
 };
 
 static struct plugin plugins[MAX_PLUGINS];
@@ -112,8 +113,10 @@ static int plugin_accepts_command(struct plugin *p, char *plug_command)
 	commands = p->get_commands();
 
 	for (i = 0; i < cmd_qty; i++) {
-		if (!strcmp(plug_command, commands[i]))
+		if (!strcmp(plug_command, commands[i])) {
+			debug("%s plugin acting on it.", p->get_plug_name());
 			return 1;
+		}
 	}
 	return 0;
 }
@@ -469,12 +472,17 @@ static void load_plugins()
 		    dlsym(handle, "create_response");
 		plugins[nplugins].plug_init = dlsym(handle, "plug_init");
 		plugins[nplugins].plug_close = dlsym(handle, "plug_close");
+		plugins[nplugins].get_plug_name = dlsym(handle,
+				"get_plug_name");
 
 		/* only count this as a valid plugin if create_response,
 		 * get_commands, and get_command_qty were found */
 		if (plugins[nplugins].create_response &&
 				plugins[nplugins].get_commands &&
-				plugins[nplugins].get_command_qty) {
+				plugins[nplugins].get_command_qty &&
+				plugins[nplugins].plug_init &&
+				plugins[nplugins].plug_close &&
+				plugins[nplugins].get_plug_name) {
 			log_info("Loaded plugin file %s", location);
 			nplugins++;
 		}

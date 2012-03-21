@@ -8,6 +8,7 @@
 static char **commands;
 static const int command_qty = 1;
 static char quit_cmd[] = QUIT_QUIT_CMD;
+static char plug_name[] = "quit";
 
 char **get_commands()
 {
@@ -17,6 +18,11 @@ char **get_commands()
 int get_command_qty()
 {
 	return command_qty;
+}
+
+char *get_plug_name()
+{
+	return plug_name;
 }
 
 int plug_init()

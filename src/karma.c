@@ -20,6 +20,7 @@ static const int command_qty = 3;
 static char karma_cmd[] = KARMA_CHECK_CMD;
 static char up_cmd[] = KARMA_UP_CMD;
 static char down_cmd[] = KARMA_DOWN_CMD;
+static char plug_name[] = "karma";
 
 char **get_commands()
 {
@@ -29,6 +30,11 @@ char **get_commands()
 int get_command_qty()
 {
 	return command_qty;
+}
+
+char *get_plug_name()
+{
+	return plug_name;
 }
 
 int plug_init()

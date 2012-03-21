@@ -20,6 +20,7 @@ static const int command_qty = 3;
 static char pools_cmd[] = RM_POOLS_CMD;
 static char reload_maps_cmd[] = RM_RELOAD_MAPS_CMD;
 static char random_map_cmd[] = RM_RANDOM_MAP_CMD;
+static char plug_name[] = "random map pools";
 
 char **get_commands()
 {
@@ -29,6 +30,11 @@ char **get_commands()
 int get_command_qty()
 {
 	return command_qty;
+}
+
+char *get_plug_name()
+{
+	return plug_name;
 }
 
 /*
