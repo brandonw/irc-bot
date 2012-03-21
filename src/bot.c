@@ -207,7 +207,8 @@ static void process_message(struct irc_message *msg)
 	strtok(tmp, " ");
 	plug_command = strtok(NULL, " ") + 1; // ignore : prefix ':'
 
-	if (*plug_command != '!')
+	if (*plug_command != '!') {
+		free(tmp_params);
 		return;
 	plug_command++; // ignore '!'
 
