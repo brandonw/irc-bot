@@ -3,11 +3,35 @@
 #include "bot.h"
 #include "debug.h"
 
-static const char command[] = "PRIVMSG";
+#define QUIT_QUIT_CMD "quit"
 
-char *get_command()
+static char **commands;
+static const int command_qty = 1;
+static char quit_cmd[] = QUIT_QUIT_CMD;
+
+char **get_commands()
 {
-	return (char *)command;
+	return commands;
+}
+
+int get_command_qty()
+{
+	return command_qty;
+}
+
+int plug_init()
+{
+	commands = malloc(sizeof(*commands) * command_qty);
+	commands[0] = quit_cmd;
+
+	return 0;
+}
+
+int plug_close()
+{
+	free(commands);
+
+	return 0;
 }
 
 int create_response(struct irc_message *msg,
@@ -20,7 +44,7 @@ int create_response(struct irc_message *msg,
 
 	*msg_count = 0;
 
-	if (strcmp(msg_message, "!quit") == 0 &&
+	if (strcmp(msg_message, CMD_CHAR QUIT_QUIT_CMD) == 0 &&
 			strcmp(msg_nick, "brandonw") == 0) {
 		log_info("Received `!quit', quitting...");
 		kill_bot(0);

@@ -7,110 +7,42 @@
 #include "bot.h"
 #include "debug.h"
 
-#define   MAX_KARMA_LINE_LENGTH	100
-#define   MAX_NICK_LENGTH	80
 #define   KARMA_FILE            "karma.txt"
+#define   KARMA_CHECK_CMD       "karma"
+#define   KARMA_UP_CMD          "up"
+#define   KARMA_DOWN_CMD        "down"
+#define   KARMA_MAX_LINE_LENGTH	100
+#define   KARMA_MAX_NICK_LENGTH	80
 
 static GHashTable *karma_hash = NULL;
+static char **commands;
+static const int command_qty = 3;
+static char karma_cmd[] = KARMA_CHECK_CMD;
+static char up_cmd[] = KARMA_UP_CMD;
+static char down_cmd[] = KARMA_DOWN_CMD;
 
-static const char command[] = "PRIVMSG";
-
-char *get_command()
+char **get_commands()
 {
-	return (char *)command;
+	return commands;
 }
 
-int create_response(struct irc_message *msg,
-		struct irc_message **messages, int *msg_count)
+int get_command_qty()
 {
-	char buf[IRC_BUF_LENGTH];
-	char *msg_message, *tok, *msg_nick;
-	long *k;
-
-	strtok(msg->params, " ");
-	msg_message = strtok(NULL, "") + 1;
-	tok = strtok(msg_message, " ");
-
-	if (strcmp(tok, "!karma") != 0 && strcmp(tok, "!up") != 0 &&
-			strcmp(tok, "!down") != 0)
-	{
-		return 0;
-	}
-
-	msg_nick = strtok(NULL, " ");
-	if (msg_nick == NULL || strlen(msg_nick) > MAX_NICK_LENGTH) {
-		if (msg_nick == NULL)
-			log_warn("Missing nick in karma plugin.");
-		else
-			log_warn("%s is too long of a nick.", msg_nick);
-		return 0;
-	}
-
-	*msg_count = 0;
-
-	if (strcmp(tok, "!karma") == 0) {
-		long tmp_k = 0;
-		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
-		if (k != NULL) {
-			tmp_k = *k;
-		}
-
-		debug("Retrieving %ld karma for %s", tmp_k, msg_nick);
-
-		sprintf(buf, "%s :%s has %ld karma", channel, msg_nick, tmp_k);
-		messages[0] = create_message(NULL, "PRIVMSG", buf);
-		if (messages[0])
-			*msg_count = 1;
-	} else if (strcmp(tok, "!up") == 0) {
-		char *n;
-
-		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
-		if (k == NULL) {
-			k = malloc(sizeof(*k));
-			*k = 0;
-			n = strdup(msg_nick);
-			g_hash_table_insert(karma_hash, n, k);
-		}
-		(*k)++;
-
-		debug("Upping %s karma to %ld", msg_nick, *k);
-
-		sprintf(buf, "%s :%s has been upvoted to %ld karma",
-			channel, msg_nick, *k);
-		messages[0] = create_message(NULL, "PRIVMSG", buf);
-		if (messages[0])
-			*msg_count = 1;
-	} else if (strcmp(tok, "!down") == 0) {
-		char *n;
-
-		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
-		if (k == NULL) {
-			k = malloc(sizeof(*k));
-			*k = 0;
-			n = strdup(msg_nick);
-			g_hash_table_insert(karma_hash, n, k);
-		}
-		(*k)--;
-
-		debug("Reducing %s karma to %ld", msg_nick, *k);
-
-		sprintf(buf, "%s :%s has been downvoted to %ld karma",
-			channel, msg_nick, *k);
-		messages[0] = create_message(NULL, "PRIVMSG", buf);
-		if (messages[0])
-			*msg_count = 1;
-	}
-
-	return 0;
+	return command_qty;
 }
 
 int plug_init()
 {
 	FILE *fp;
-	char buf[MAX_KARMA_LINE_LENGTH];
+	char buf[KARMA_MAX_LINE_LENGTH];
 	int errno, lineno;
 	char *n;
 	long *k;
+
+	commands = malloc(sizeof(*commands) * command_qty);
+	commands[0] = karma_cmd;
+	commands[1] = up_cmd;
+	commands[2] = down_cmd;
 
 	karma_hash = g_hash_table_new(g_str_hash, g_str_equal);
 	lineno = 1;
@@ -136,7 +68,7 @@ int plug_init()
 			lineno++;
 			continue;
 		}
-		if (strlen(tok) > MAX_NICK_LENGTH) {
+		if (strlen(tok) > KARMA_MAX_NICK_LENGTH) {
 			log_warn("%s:%d nick is too long.",
 					KARMA_FILE, lineno);
 			lineno++;
@@ -185,6 +117,8 @@ int plug_close()
 	char *nick;
 	long *karma;
 
+	free(commands);
+
 	keys = g_hash_table_get_keys(karma_hash);
 	fp = fopen(KARMA_FILE, "w");
 	if (fp == NULL) {
@@ -212,5 +146,90 @@ int plug_close()
 		return -1;
 
 	fclose(fp);
+	return 0;
+}
+
+int create_response(struct irc_message *msg,
+		struct irc_message **messages, int *msg_count)
+{
+	char buf[IRC_BUF_LENGTH];
+	char *msg_message, *tok, *msg_nick;
+	long *k;
+
+	strtok(msg->params, " ");
+	msg_message = strtok(NULL, "") + 1;
+	tok = strtok(msg_message, " ");
+
+	if (strcmp(tok, CMD_CHAR KARMA_CHECK_CMD) != 0 &&
+			strcmp(tok, CMD_CHAR KARMA_UP_CMD) != 0 &&
+			strcmp(tok, CMD_CHAR KARMA_DOWN_CMD) != 0)
+	{
+		return 0;
+	}
+
+	msg_nick = strtok(NULL, " ");
+	if (msg_nick == NULL || strlen(msg_nick) > KARMA_MAX_NICK_LENGTH) {
+		if (msg_nick == NULL)
+			log_warn("Missing nick in karma plugin.");
+		else
+			log_warn("%s is too long of a nick.", msg_nick);
+		return 0;
+	}
+
+	*msg_count = 0;
+
+	if (strcmp(tok, CMD_CHAR KARMA_CHECK_CMD) == 0) {
+		long tmp_k = 0;
+		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
+		if (k != NULL) {
+			tmp_k = *k;
+		}
+
+		debug("Retrieving %ld karma for %s", tmp_k, msg_nick);
+
+		sprintf(buf, "%s :%s has %ld karma", channel, msg_nick, tmp_k);
+		messages[0] = create_message(NULL, "PRIVMSG", buf);
+		if (messages[0])
+			*msg_count = 1;
+	} else if (strcmp(tok, CMD_CHAR KARMA_UP_CMD) == 0) {
+		char *n;
+
+		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
+		if (k == NULL) {
+			k = malloc(sizeof(*k));
+			*k = 0;
+			n = strdup(msg_nick);
+			g_hash_table_insert(karma_hash, n, k);
+		}
+		(*k)++;
+
+		debug("Upping %s karma to %ld", msg_nick, *k);
+
+		sprintf(buf, "%s :%s has been upvoted to %ld karma",
+			channel, msg_nick, *k);
+		messages[0] = create_message(NULL, "PRIVMSG", buf);
+		if (messages[0])
+			*msg_count = 1;
+	} else if (strcmp(tok, CMD_CHAR KARMA_DOWN_CMD) == 0) {
+		char *n;
+
+		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
+		if (k == NULL) {
+			k = malloc(sizeof(*k));
+			*k = 0;
+			n = strdup(msg_nick);
+			g_hash_table_insert(karma_hash, n, k);
+		}
+		(*k)--;
+
+		debug("Reducing %s karma to %ld", msg_nick, *k);
+
+		sprintf(buf, "%s :%s has been downvoted to %ld karma",
+			channel, msg_nick, *k);
+		messages[0] = create_message(NULL, "PRIVMSG", buf);
+		if (messages[0])
+			*msg_count = 1;
+	} else { log_warn("Unknown command %s", tok); }
+
 	return 0;
 }

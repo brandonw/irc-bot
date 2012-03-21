@@ -15,7 +15,8 @@
 
 struct plugin {
 	void *handle;
-	char *(*get_command) ();
+	char **(*get_commands) ();
+	int (*get_command_qty) ();
 	int (*create_response) (struct irc_message *,
 			struct irc_message **, int *);
 	int (*plug_init) ();
@@ -102,6 +103,21 @@ static int filter(const struct dirent *d)
 	return 0;
 }
 
+static int plugin_accepts_command(struct plugin *p, char *plug_command)
+{
+	int cmd_qty = 0, i;
+	char **commands;
+
+	cmd_qty = p->get_command_qty();
+	commands = p->get_commands();
+
+	for (i = 0; i < cmd_qty; i++) {
+		if (!strcmp(plug_command, commands[i]))
+			return 1;
+	}
+	return 0;
+}
+
 static int send_msg(struct irc_message *message)
 {
 	char buf[IRC_BUF_LENGTH];
@@ -177,15 +193,30 @@ static void process_message(struct irc_message *msg)
 		free_message(pong_msg);
 
 		return;
+	} else if (strcmp("PRIVMSG", msg->command)) {
+		return;
 	}
+
+	char *plug_command, *tmp_params, *tmp;
+
+	tmp_params = strdup(msg->params);
+	tmp = tmp_params;
+	strtok(tmp, " ");
+	plug_command = strtok(NULL, " ") + 1; // ignore : prefix ':'
+
+	if (*plug_command != '!')
+		return;
+	plug_command++; // ignore '!'
+
+	debug("Command received: %s", plug_command);
 
 	for (i = 0; i < nplugins; i++) {
 		struct irc_message *temp_msg;
 
-		num_of_responses = 0;
-		if (strcmp(plugins[i].get_command(), msg->command))
+		if (!plugin_accepts_command(&plugins[i], plug_command))
 			continue;
 
+		num_of_responses = 0;
 		temp_msg =
 		    create_message(msg->prefix, msg->command, msg->params);
 
@@ -198,13 +229,13 @@ static void process_message(struct irc_message *msg)
 
 		if (num_of_responses > 0) {
 			int i;
-			debug("Plugin acting on this message.");
 			for (i = 0; i < num_of_responses; i++) {
 				send_msg(responses[i]);
 				free_message(responses[i]);
 			}
 		}
 	}
+	free(tmp_params);
 }
 
 static int getaddr(struct addrinfo **result)
@@ -431,16 +462,19 @@ static void load_plugins()
 
 		plugins[nplugins].handle = handle;
 
-		plugins[nplugins].get_command = dlsym(handle, "get_command");
+		plugins[nplugins].get_commands = dlsym(handle, "get_commands");
+		plugins[nplugins].get_command_qty = dlsym(handle,
+				"get_command_qty");
 		plugins[nplugins].create_response =
 		    dlsym(handle, "create_response");
 		plugins[nplugins].plug_init = dlsym(handle, "plug_init");
 		plugins[nplugins].plug_close = dlsym(handle, "plug_close");
 
-		/* only count this as a valid plugin if both create_response
-		 * and get_command were found */
+		/* only count this as a valid plugin if create_response,
+		 * get_commands, and get_command_qty were found */
 		if (plugins[nplugins].create_response &&
-				plugins[nplugins].get_command) {
+				plugins[nplugins].get_commands &&
+				plugins[nplugins].get_command_qty) {
 			log_info("Loaded plugin file %s", location);
 			nplugins++;
 		}

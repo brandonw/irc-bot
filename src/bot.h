@@ -7,6 +7,8 @@
 #define   MAX_PLUGINS         	50
 #define   LAG_INTERVAL          300
 #define   PING_WAIT_TIME        15
+#define   CMD_CHAR              "!"
+#define   MAX_CMD_LENGTH        15
 
 extern char *address, *channel, *nick;
 

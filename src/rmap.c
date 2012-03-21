@@ -7,12 +7,29 @@
 #include "errno.h"
 #include "debug.h"
 
-#define   MAX_MAPS_PER_POOL	25
-#define   MAX_POOLS		MAX_RESPONSE_MSGES - 2
+#define   RM_MAX_MAPS_PER_POOL	25
+#define   RM_MAX_POOLS		MAX_RESPONSE_MSGES - 2
+#define   RM_POOLS_CMD          "pools"
+#define   RM_RELOAD_MAPS_CMD    "reload-maps"
+#define   RM_RANDOM_MAP_CMD     "rm"
 
 static int npools = 0;
 static struct pool **pools = NULL;
-static const char command[] = "PRIVMSG";
+static char **commands;
+static const int command_qty = 3;
+static char pools_cmd[] = RM_POOLS_CMD;
+static char reload_maps_cmd[] = RM_RELOAD_MAPS_CMD;
+static char random_map_cmd[] = RM_RANDOM_MAP_CMD;
+
+char **get_commands()
+{
+	return commands;
+}
+
+int get_command_qty()
+{
+	return command_qty;
+}
 
 /*
  * Represents a map pool.
@@ -83,21 +100,21 @@ static int filter(const struct dirent *d)
 	return 1;
 }
 
-char *get_command()
-{
-	return (char *)command;
-}
-
 int plug_init()
 {
 	FILE *fp;
 	char buf[100];
-	char *maps[MAX_MAPS_PER_POOL];
+	char *maps[RM_MAX_MAPS_PER_POOL];
 	struct dirent **namelist;
 	int n, i;
 
+	commands = malloc(sizeof(*commands) * command_qty);
+	commands[0] = pools_cmd;
+	commands[1] = random_map_cmd;
+	commands[2] = reload_maps_cmd;
+
 	npools = 0;
-	pools = malloc(sizeof(*pools) * MAX_POOLS);
+	pools = malloc(sizeof(*pools) * RM_MAX_POOLS);
 	n = scandir("../rmap", &namelist, &filter, alphasort);
 
 	if (n < 0) {
@@ -106,7 +123,7 @@ int plug_init()
 		exit(EXIT_FAILURE);
 	}
 
-	while (n-- && npools < MAX_POOLS) {
+	while (n-- && npools < RM_MAX_POOLS) {
 		char location[100] = "../rmap/";
 		strcpy(location + 8, namelist[n]->d_name);
 
@@ -157,7 +174,7 @@ int plug_init()
 		free(namelist[n]);
 	}
 
-	if (npools == MAX_POOLS) {
+	if (npools == RM_MAX_POOLS) {
 		log_warn("Too many map pools; truncating remaining pools.");
 	}
 
@@ -168,6 +185,8 @@ int plug_init()
 int plug_close()
 {
 	int i;
+
+	free(commands);
 
 	for (i = 0; i < npools; i++)
 		free_pool(pools[i]);
@@ -200,7 +219,7 @@ int create_response(struct irc_message *msg,
 	/* pool number (if specified) */
 	n = strtok(NULL, " ");
 
-	if (strcmp(command, "!pools") == 0) {
+	if (strcmp(command, CMD_CHAR RM_POOLS_CMD) == 0) {
 		int i;
 
 		sprintf(buf, "%s :%s",
@@ -227,7 +246,7 @@ int create_response(struct irc_message *msg,
 			if (messages[*msg_count])
 				(*msg_count)++;
 		}
-	} else if (strcmp(command, "!reload") == 0) {
+	} else if (strcmp(command, CMD_CHAR RM_RELOAD_MAPS_CMD) == 0) {
 		plug_close();
 		plug_init();
 
@@ -238,7 +257,7 @@ int create_response(struct irc_message *msg,
 			create_message(NULL, "PRIVMSG", buf);
 		if (messages[*msg_count])
 			(*msg_count)++;
-	} else if (strcmp(command, "!rm") == 0) {
+	} else if (strcmp(command, CMD_CHAR RM_RANDOM_MAP_CMD) == 0) {
 		int pn, choice;
 
 		if (n != NULL) {
