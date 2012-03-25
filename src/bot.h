@@ -12,15 +12,14 @@
 
 extern char *address, *channel, *nick;
 
-struct irc_message {
-	char *prefix;
-	char *command;
-	char *params;
+struct plug_msg {
+	char *dest;
+	char *msg;
 };
 
-void run_bot();
+struct plug_msg *create_plug_msg(char *dest, char *msg);
+void free_plug_msg(struct plug_msg *msg);
 void kill_bot(int p);
-struct irc_message *create_message(char *, char *, char *);
-void free_message(struct irc_message *message);
+void run_bot();
 
 #endif

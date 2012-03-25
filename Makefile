@@ -1,6 +1,5 @@
 BIN_NAME = irc-bot
 
-PLUG_SRC += quit.c
 PLUG_SRC += karma.c
 PLUG_SRC += rmap.c
 

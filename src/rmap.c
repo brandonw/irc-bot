@@ -200,70 +200,51 @@ int plug_close()
 
 	return 0;
 }
-int create_response(struct irc_message *msg,
-		struct irc_message **messages, int *msg_count)
+
+int create_cmd_response(char *src, char *dest,
+		char *cmd, char *msg, struct plug_msg **responses,
+		int *count)
 {
 	char buf[IRC_BUF_LENGTH];
-	char *msg_message, *command, *n, *c;
+	char *n;
 
-	/* channel */
-	c = strtok(msg->params, " ");
-
-	/* message */
-	msg_message = strtok(NULL, "") + 1;
-
-	/* if channel is the bot's nick, it is a PM
-	 * determine channel from the params */
-	if (strcmp(c, nick) == 0)
-		c = strtok(msg->prefix, "!") + 1;
-
-	/* command (e.g. !pools) */
-	command = strtok(msg_message, " ");
-	if (command == NULL)
-		return 0;
+	*count = 0;
 
 	/* pool number (if specified) */
-	n = strtok(NULL, " ");
+	n = strtok(msg, " ");
 
-	if (strcmp(command, CMD_CHAR RM_POOLS_CMD) == 0) {
+	if (strcmp(cmd, RM_POOLS_CMD) == 0) {
 		int i;
 
-		sprintf(buf, "%s :%s",
-				c,
-				"Available map pools:");
-		messages[*msg_count] =
-			create_message(NULL, "PRIVMSG", buf);
-		if (messages[*msg_count])
-			(*msg_count)++;
+		sprintf(buf, "%s", "Available map pools:");
+		responses[*count] =
+			create_plug_msg(channel, buf);
+		if (responses[*count])
+			(*count)++;
 
-		sprintf(buf, "%s :%s",
-				c,
-				"All pools (don't specify a number)");
-		messages[*msg_count] =
-			create_message(NULL, "PRIVMSG", buf);
-		if (messages[*msg_count])
-			(*msg_count)++;
+		sprintf(buf, "%s", "All pools (don't specify a number)");
+		responses[*count] =
+			create_plug_msg(channel, buf);
+		if (responses[*count])
+			(*count)++;
 
 		for (i = 0; i < npools; i++) {
-			sprintf(buf, "%s :%d. %s",
-					c, i+1, pools[i]->name);
-			messages[*msg_count] =
-				create_message(NULL, "PRIVMSG", buf);
-			if (messages[*msg_count])
-				(*msg_count)++;
+			sprintf(buf, "%d. %s", i+1, pools[i]->name);
+			responses[*count] =
+				create_plug_msg(channel, buf);
+			if (responses[*count])
+				(*count)++;
 		}
-	} else if (strcmp(command, CMD_CHAR RM_RELOAD_MAPS_CMD) == 0) {
+	} else if (strcmp(cmd, RM_RELOAD_MAPS_CMD) == 0) {
 		plug_close();
 		plug_init();
 
-		sprintf(buf, "%s :%s",
-				c,
-				"Reloaded map pools");
-		messages[*msg_count] =
-			create_message(NULL, "PRIVMSG", buf);
-		if (messages[*msg_count])
-			(*msg_count)++;
-	} else if (strcmp(command, CMD_CHAR RM_RANDOM_MAP_CMD) == 0) {
+		sprintf(buf, "%s", "Reloaded map pools");
+		responses[*count] =
+			create_plug_msg(channel, buf);
+		if (responses[*count])
+			(*count)++;
+	} else if (strcmp(cmd, RM_RANDOM_MAP_CMD) == 0) {
 		int pn, choice;
 
 		if (n != NULL) {
@@ -275,12 +256,11 @@ int create_response(struct irc_message *msg,
 
 			choice = random() % (pools[pn]->nmaps);
 
-			sprintf(buf, "%s :Map: %s",
-					c, pools[pn]->maps[choice]);
-			messages[*msg_count] =
-				create_message(NULL, "PRIVMSG", buf);
-			if (messages[*msg_count])
-				(*msg_count)++;
+			sprintf(buf, "Map: %s",pools[pn]->maps[choice]);
+			responses[*count] =
+				create_plug_msg(channel, buf);
+			if (responses[*count])
+				(*count)++;
 		} else {
 			/* pick a map from the union of all pools */
 			int totalmaps = 0, i;
@@ -295,11 +275,11 @@ int create_response(struct irc_message *msg,
 				i++;
 			}
 
-			sprintf(buf, "%s :Map: %s", c, pools[i]->maps[choice]);
-			messages[*msg_count] =
-				create_message(NULL, "PRIVMSG", buf);
-			if (messages[*msg_count])
-				(*msg_count)++;
+			sprintf(buf, "Map: %s", pools[i]->maps[choice]);
+			responses[*count] =
+				create_plug_msg(channel, buf);
+			if (responses[*count])
+				(*count)++;
 		}
 	}
 

@@ -155,25 +155,24 @@ int plug_close()
 	return 0;
 }
 
-int create_response(struct irc_message *msg,
-		struct irc_message **messages, int *msg_count)
+int create_cmd_response(char *src, char *dest,
+		char *cmd, char *msg, struct plug_msg **responses,
+		int *count)
 {
 	char buf[IRC_BUF_LENGTH];
-	char *msg_message, *tok, *msg_nick;
+	char *msg_nick;
 	long *k;
 
-	strtok(msg->params, " ");
-	msg_message = strtok(NULL, "") + 1;
-	tok = strtok(msg_message, " ");
+	*count = 0;
 
-	if (strcmp(tok, CMD_CHAR KARMA_CHECK_CMD) != 0 &&
-			strcmp(tok, CMD_CHAR KARMA_UP_CMD) != 0 &&
-			strcmp(tok, CMD_CHAR KARMA_DOWN_CMD) != 0)
+	if (strcmp(cmd, KARMA_CHECK_CMD) != 0 &&
+			strcmp(cmd, KARMA_UP_CMD) != 0 &&
+			strcmp(cmd, KARMA_DOWN_CMD) != 0)
 	{
 		return 0;
 	}
 
-	msg_nick = strtok(NULL, " ");
+	msg_nick = strtok(msg, " ");
 	if (msg_nick == NULL || strlen(msg_nick) > KARMA_MAX_NICK_LENGTH) {
 		if (msg_nick == NULL)
 			log_warn("Missing nick in karma plugin.");
@@ -182,9 +181,9 @@ int create_response(struct irc_message *msg,
 		return 0;
 	}
 
-	*msg_count = 0;
+	*count = 0;
 
-	if (strcmp(tok, CMD_CHAR KARMA_CHECK_CMD) == 0) {
+	if (strcmp(cmd, KARMA_CHECK_CMD) == 0) {
 		long tmp_k = 0;
 		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
 		if (k != NULL) {
@@ -193,11 +192,11 @@ int create_response(struct irc_message *msg,
 
 		debug("Retrieving %ld karma for %s", tmp_k, msg_nick);
 
-		sprintf(buf, "%s :%s has %ld karma", channel, msg_nick, tmp_k);
-		messages[0] = create_message(NULL, "PRIVMSG", buf);
-		if (messages[0])
-			*msg_count = 1;
-	} else if (strcmp(tok, CMD_CHAR KARMA_UP_CMD) == 0) {
+		sprintf(buf, "%s has %ld karma", msg_nick, tmp_k);
+		responses[0] = create_plug_msg(channel, buf);
+		if (responses[0])
+			*count = 1;
+	} else if (strcmp(cmd, KARMA_UP_CMD) == 0) {
 		char *n;
 
 		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
@@ -211,12 +210,12 @@ int create_response(struct irc_message *msg,
 
 		debug("Upping %s karma to %ld", msg_nick, *k);
 
-		sprintf(buf, "%s :%s has been upvoted to %ld karma",
-			channel, msg_nick, *k);
-		messages[0] = create_message(NULL, "PRIVMSG", buf);
-		if (messages[0])
-			*msg_count = 1;
-	} else if (strcmp(tok, CMD_CHAR KARMA_DOWN_CMD) == 0) {
+		sprintf(buf, "%s has been upvoted to %ld karma",
+			msg_nick, *k);
+		responses[0] = create_plug_msg(channel, buf);
+		if (responses[0])
+			*count = 1;
+	} else if (strcmp(cmd, KARMA_DOWN_CMD) == 0) {
 		char *n;
 
 		k = (long *)g_hash_table_lookup(karma_hash, msg_nick);
@@ -230,12 +229,12 @@ int create_response(struct irc_message *msg,
 
 		debug("Reducing %s karma to %ld", msg_nick, *k);
 
-		sprintf(buf, "%s :%s has been downvoted to %ld karma",
-			channel, msg_nick, *k);
-		messages[0] = create_message(NULL, "PRIVMSG", buf);
-		if (messages[0])
-			*msg_count = 1;
-	} else { log_warn("Unknown command %s", tok); }
+		sprintf(buf, "%s has been downvoted to %ld karma",
+			msg_nick, *k);
+		responses[0] = create_plug_msg(channel, buf);
+		if (responses[0])
+			*count = 1;
+	} else { log_warn("Unknown command %s", cmd); }
 
 	return 0;
 }

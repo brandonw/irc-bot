@@ -17,11 +17,22 @@ struct plugin {
 	void *handle;
 	char **(*get_commands) ();
 	int (*get_command_qty) ();
-	int (*create_response) (struct irc_message *,
-			struct irc_message **, int *);
+	int (*create_cmd_response) (char *src, char *dest,
+			char *cmd, char *msg, struct plug_msg **responses,
+			int *count);
+	int (*create_msg_response) (char *src, char *dest,
+			char *msg, struct plug_msg **responses, int *count);
 	int (*plug_init) ();
 	int (*plug_close) ();
 	char *(*get_plug_name) ();
+	char *(*get_plug_descr) ();
+	char **(*get_plug_help) ();
+};
+
+struct irc_message {
+	char *prefix;
+	char *command;
+	char *params;
 };
 
 static struct plugin plugins[MAX_PLUGINS];
@@ -34,6 +45,32 @@ void reset()
 	sent_nick = 0;
 	joined = 0;
 	return;
+}
+
+void kill_bot(int p)
+{
+	debug("Killing bot...");
+	keep_alive = 0;
+}
+
+struct plug_msg *create_plug_msg(char *dest, char *msg)
+{
+	struct plug_msg *pmsg;
+
+	pmsg = malloc(sizeof(*pmsg));
+	pmsg->dest = strdup(dest);
+	pmsg->msg = strdup(msg);
+
+	return pmsg;
+}
+
+void free_plug_msg(struct plug_msg *msg)
+{
+	if (msg) {
+		free(msg->dest);
+		free(msg->msg);
+		free(msg);
+	}
 }
 
 struct irc_message *create_message(char *prefix, char *command, char *params)
@@ -104,7 +141,7 @@ static int filter(const struct dirent *d)
 	return 0;
 }
 
-static int plugin_accepts_command(struct plugin *p, char *plug_command)
+static int plugin_accepts_command(struct plugin *p, char *cmd)
 {
 	int cmd_qty = 0, i;
 	char **commands;
@@ -113,7 +150,7 @@ static int plugin_accepts_command(struct plugin *p, char *plug_command)
 	commands = p->get_commands();
 
 	for (i = 0; i < cmd_qty; i++) {
-		if (!strcmp(plug_command, commands[i])) {
+		if (!strcmp(cmd, commands[i])) {
 			debug("%s plugin acting on it.", p->get_plug_name());
 			return 1;
 		}
@@ -150,96 +187,148 @@ static int send_msg(struct irc_message *message)
 	return send(sockfd, buf, strlen(buf), 0);
 }
 
+static void send_join()
+{
+	struct irc_message *join_msg;
+	log_info("Sending JOIN message.");
+	join_msg = create_message(NULL, "JOIN", channel);
+	send_msg(join_msg);
+	free_message(join_msg);
+
+	joined = 1;
+}
+
+static void send_nick()
+{
+	struct irc_message *id_msg;
+	char buf[IRC_BUF_LENGTH];
+
+	log_info("Received NOTICE indicating connection is active, "
+			"sending NICK and USER information.");
+
+	id_msg = create_message(NULL, "NICK", nick);
+	send_msg(id_msg);
+	free_message(id_msg);
+
+	sprintf(buf, "USER %s %s 8 * : %s", nick, nick, nick);
+	id_msg = create_message(NULL, "USER", buf);
+	send_msg(id_msg);
+	free_message(id_msg);
+
+	sent_nick = 1;
+}
+
+static void send_ping(char *ping)
+{
+	struct irc_message *pong_msg;
+
+	log_info("Received PING, sending PONG.");
+	pong_msg = create_message(NULL, "PONG", ping);
+	send_msg(pong_msg);
+	free_message(pong_msg);
+}
+
+static void print_help_msges(char *src, char *dest, char *msg)
+{
+
+}
+
+static void send_quit()
+{
+	struct irc_message *quit_msg;
+	log_info("Received `!quit', quitting...");
+	kill_bot(0);
+	quit_msg = create_message(NULL, "QUIT", NULL);
+	send_msg(quit_msg);
+	free_message(quit_msg);
+}
+
+static void process_command(char *cmd, char *src, char *dest, char *msg)
+{
+	int num_of_responses, i;
+	struct plugin *p;
+	char buf[IRC_BUF_LENGTH];
+	struct irc_message *tmp;
+	struct plug_msg *responses[MAX_RESPONSE_MSGES];
+
+	if (!strcmp("help", cmd)) {
+		print_help_msges(src, dest, msg);
+		return;
+	} else if (!strcmp("quit", cmd)) {
+		char *src_nick = strtok(src, "!");
+		if (!strcmp("brandonw", src_nick)) {
+			send_quit();
+		}
+		return;
+	}
+
+	for (i = 0; i < nplugins; i++) {
+		p = &plugins[i];
+		debug("plug name: %s", p->get_plug_name());
+		if (!plugin_accepts_command(p, cmd))
+			continue;
+
+		num_of_responses = 0;
+
+		if (!p->create_cmd_response) {
+			log_warn("%s plugin accepts command %s but does not"
+					"implement create_cmd_response",
+					p->get_plug_name(), cmd);
+			return;
+		}
+		if (p->create_cmd_response(src, dest, cmd, msg, responses,
+					&num_of_responses)) {
+			return;
+		}
+
+		if (num_of_responses > 0) {
+			int j;
+			for (j = 0; j < num_of_responses; j++) {
+				sprintf(buf, "%s :%s", responses[j]->dest,
+						responses[j]->msg);
+
+				tmp = create_message(NULL, "PRIVMSG",
+						buf);
+				send_msg(tmp);
+				free_message(tmp);
+				free_plug_msg(responses[j]);
+			}
+		}
+		return;
+	}
+}
+
+static void process_priv_message(struct irc_message *irc_msg)
+{
+	char *cmd, *dest, *msg;
+
+	dest = strtok(irc_msg->params, " ");
+	msg = strtok(NULL, "") + 1; // ignore ':' char
+
+	if (*msg == *CMD_CHAR) {
+		cmd = strtok(msg, " ") + 1; // ignore CMD_CHAR char
+		msg = strtok(NULL, "");
+		debug("Command received: %s", cmd);
+		process_command(cmd, irc_msg->prefix + 1, dest, msg);
+	}
+}
+
 static void process_message(struct irc_message *msg)
 {
-	int i;
-	struct irc_message *responses[MAX_RESPONSE_MSGES];
-	int num_of_responses;
-
 	if (!joined && !strcmp("MODE", msg->command)) {
-		struct irc_message *join_msg;
-		log_info("Sending JOIN message.");
-		join_msg = create_message(NULL, "JOIN", channel);
-		send_msg(join_msg);
-		free_message(join_msg);
-
-		joined = 1;
+		send_join();
 		return;
-	}
-
-	if (!sent_nick && !strcmp("NOTICE", msg->command)) {
-		struct irc_message *id_msg;
-		char buf[IRC_BUF_LENGTH];
-
-		log_info("Received NOTICE indicating connection is active, "
-				"sending NICK and USER information.");
-
-		id_msg = create_message(NULL, "NICK", nick);
-		send_msg(id_msg);
-		free_message(id_msg);
-
-		sprintf(buf, "USER %s %s 8 * : %s", nick, nick, nick);
-		id_msg = create_message(NULL, "USER", buf);
-		send_msg(id_msg);
-		free_message(id_msg);
-
-		sent_nick = 1;
+	} else if (!sent_nick && !strcmp("NOTICE", msg->command)) {
+		send_nick();
 		return;
-	}
-
-	if (!strcmp("PING", msg->command)) {
-		struct irc_message *pong_msg;
-
-		log_info("Received PING, sending PONG.");
-		pong_msg = create_message(NULL, "PONG", msg->params);
-		send_msg(pong_msg);
-		free_message(pong_msg);
-
+	} else if (!strcmp("PING", msg->command)) {
+		send_ping(msg->params);
 		return;
 	} else if (strcmp("PRIVMSG", msg->command)) {
 		return;
 	}
 
-	char *plug_command, *tmp_params, *tmp;
-
-	tmp_params = strdup(msg->params);
-	tmp = tmp_params;
-	strtok(tmp, " ");
-	plug_command = strtok(NULL, " ") + 1; // ignore : prefix ':'
-
-	if (*plug_command != '!') {
-		free(tmp_params);
-		return;
-	plug_command++; // ignore '!'
-
-	debug("Command received: %s", plug_command);
-
-	for (i = 0; i < nplugins; i++) {
-		struct irc_message *temp_msg;
-
-		if (!plugin_accepts_command(&plugins[i], plug_command))
-			continue;
-
-		num_of_responses = 0;
-		temp_msg =
-		    create_message(msg->prefix, msg->command, msg->params);
-
-		if (!temp_msg)
-			continue;
-
-		plugins[i].create_response(temp_msg, responses,
-				&num_of_responses);
-		free_message(temp_msg);
-
-		if (num_of_responses > 0) {
-			int i;
-			for (i = 0; i < num_of_responses; i++) {
-				send_msg(responses[i]);
-				free_message(responses[i]);
-			}
-		}
-	}
-	free(tmp_params);
+	process_priv_message(msg);
 }
 
 static int getaddr(struct addrinfo **result)
@@ -438,6 +527,7 @@ static void load_plugins()
 	struct dirent **namelist;
 	void *handle;
 	int n;
+	struct plugin *p;
 
 	debug("Loading plugins.");
 
@@ -449,7 +539,6 @@ static void load_plugins()
 	}
 
 	while (n-- && nplugins < MAX_PLUGINS) {
-
 		char location[100] = "plugins/";
 		strcpy(location + 8, namelist[n]->d_name);
 
@@ -464,26 +553,27 @@ static void load_plugins()
 			exit(EXIT_FAILURE);
 		}
 
-		plugins[nplugins].handle = handle;
+		p = &plugins[nplugins];
 
-		plugins[nplugins].get_commands = dlsym(handle, "get_commands");
-		plugins[nplugins].get_command_qty = dlsym(handle,
-				"get_command_qty");
-		plugins[nplugins].create_response =
-		    dlsym(handle, "create_response");
-		plugins[nplugins].plug_init = dlsym(handle, "plug_init");
-		plugins[nplugins].plug_close = dlsym(handle, "plug_close");
-		plugins[nplugins].get_plug_name = dlsym(handle,
-				"get_plug_name");
+		p->handle = handle;
+		p->get_commands = dlsym(handle, "get_commands");
+		p->get_command_qty = dlsym(handle, "get_command_qty");
+		p->create_cmd_response = dlsym(handle, "create_cmd_response");
+		p->create_msg_response = dlsym(handle, "create_msg_response");
+		p->plug_init = dlsym(handle, "plug_init");
+		p->plug_close = dlsym(handle, "plug_close");
+		p->get_plug_name = dlsym(handle, "get_plug_name");
+		p->get_plug_descr = dlsym(handle, "get_plug_descr");
+		p->get_plug_help = dlsym(handle, "get_plug_help");
 
 		/* only count this as a valid plugin if create_response,
 		 * get_commands, and get_command_qty were found */
-		if (plugins[nplugins].create_response &&
-				plugins[nplugins].get_commands &&
-				plugins[nplugins].get_command_qty &&
-				plugins[nplugins].plug_init &&
-				plugins[nplugins].plug_close &&
-				plugins[nplugins].get_plug_name) {
+		if ((p->create_cmd_response || p->create_msg_response) &&
+				p->get_commands &&
+				p->get_command_qty &&
+				p->plug_init &&
+				p->plug_close &&
+				p->get_plug_name) {
 			log_info("Loaded plugin file %s", location);
 			nplugins++;
 		}
@@ -499,14 +589,14 @@ static void load_plugins()
 
 void run_bot()
 {
-	int p_index;
+	int i;
 	struct irc_message *inc_msg;
 
 	load_plugins();
 
-	for (p_index = 0; p_index < nplugins; p_index++) {
-		if (plugins[p_index].plug_init)
-			plugins[p_index].plug_init();
+	for (i = 0; i < nplugins; i++) {
+		if (plugins[i].plug_init)
+			plugins[i].plug_init();
 	}
 
 	sockfd = connect_to_server();
@@ -525,16 +615,10 @@ void run_bot()
 
 	close(sockfd);
 
-	for (p_index = 0; p_index < nplugins; p_index++) {
-		if (plugins[p_index].plug_close) {
-			plugins[p_index].plug_close();
+	for (i = 0; i < nplugins; i++) {
+		if (plugins[i].plug_close) {
+			plugins[i].plug_close();
 		}
-		dlclose(plugins[p_index].handle);
+		dlclose(plugins[i].handle);
 	}
-}
-
-void kill_bot(int p)
-{
-	debug("Killing bot...");
-	keep_alive = 0;
 }
