@@ -91,7 +91,7 @@ void free_pool(struct pool *p)
 
 	for (i = 0; i < p->nmaps; i++)
 		free(p->maps[i]);
-
+	free(p->maps);
 	free(p->name);
 	free(p);
 
