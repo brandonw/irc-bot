@@ -45,6 +45,8 @@ int plug_init()
 	char *n;
 	long *k;
 
+	char *test;
+	test = malloc(sizeof(*test) * 20);
 	commands = malloc(sizeof(*commands) * command_qty);
 	commands[0] = karma_cmd;
 	commands[1] = up_cmd;
