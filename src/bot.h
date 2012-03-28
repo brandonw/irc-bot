@@ -19,7 +19,7 @@ struct plug_msg {
 
 struct plug_msg *create_plug_msg(char *dest, char *msg);
 void free_plug_msg(struct plug_msg *msg);
-void kill_bot(int p);
+void kill_bot();
 void run_bot();
 
 #endif

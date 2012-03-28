@@ -47,7 +47,7 @@ void reset()
 	return;
 }
 
-void kill_bot(int p)
+void kill_bot()
 {
 	debug("Killing bot...");
 	keep_alive = 0;
@@ -228,7 +228,7 @@ static void send_ping(char *ping)
 	free_message(pong_msg);
 }
 
-static void print_help_msges(char *src, char *dest, char *msg)
+static void print_help_msges(char *src)
 {
 	int i, j;
 	char buf[IRC_BUF_LENGTH];
@@ -291,7 +291,7 @@ static void send_quit()
 {
 	struct irc_message *quit_msg;
 	log_info("Received `!quit', quitting...");
-	kill_bot(0);
+	kill_bot();
 	quit_msg = create_message(NULL, "QUIT", NULL);
 	send_msg(quit_msg);
 	free_message(quit_msg);
@@ -306,7 +306,7 @@ static void process_command(char *cmd, char *src, char *dest, char *msg)
 	struct plug_msg *responses[MAX_RESPONSE_MSGES];
 
 	if (!strcmp("help", cmd)) {
-		print_help_msges(src, dest, msg);
+		print_help_msges(src);
 		return;
 	} else if (!strcmp("quit", cmd)) {
 		char *src_nick = strtok(src, "!");
@@ -502,7 +502,7 @@ static struct irc_message *recv_msg()
 
 	retval = select(sockfd + 1, &rfds, NULL, NULL, &tv);
 	if (retval == -1) {
-		kill_bot(0);
+		kill_bot();
 		return NULL;
 	} else if (!retval) {
 		time_t curr;
@@ -535,14 +535,14 @@ static struct irc_message *recv_msg()
 		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
 		if (bytes_read == 0) {
 			log_info("Connection closed.");
-			kill_bot(0);
+			kill_bot();
 			return NULL;
 		}
 
 		if (bytes_read == -1) {
 			log_err("Error receiving packets: %s",
 					strerror(errno));
-			kill_bot(1);
+			kill_bot();
 			return NULL;
 		}
 
