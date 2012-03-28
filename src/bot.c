@@ -230,6 +230,60 @@ static void send_ping(char *ping)
 
 static void print_help_msges(char *src, char *dest, char *msg)
 {
+	int i, j;
+	char buf[IRC_BUF_LENGTH];
+	struct plugin *p;
+	struct irc_message *tmp;
+
+	sprintf(buf, "%s :The following commands are available:", src);
+	tmp = create_message(NULL, "PRIVMSG", buf);
+	send_msg(tmp);
+	free_message(tmp);
+
+	sprintf(buf, "%s :=====================================", src);
+	tmp = create_message(NULL, "PRIVMSG", buf);
+	send_msg(tmp);
+	free_message(tmp);
+
+	for (i = 0; i < nplugins; i++) {
+		char *name = NULL, *descr = NULL;
+		p = &plugins[i];
+
+		sprintf(buf, "%s : ", src);
+		tmp = create_message(NULL, "PRIVMSG", buf);
+		send_msg(tmp);
+		free_message(tmp);
+
+		name = p->get_plug_name();
+		if (p->get_plug_descr)
+			descr = p->get_plug_descr();
+
+		sprintf(buf, "%s :%s%s%s", src, name,
+				(descr ? " - " : ""),
+				(descr ? descr : ""));
+		tmp = create_message(NULL, "PRIVMSG", buf);
+		send_msg(tmp);
+		free_message(tmp);
+
+		for (j = 0; j < p->get_command_qty(); j++) {
+			char *cmd = NULL, *help = NULL;
+			cmd = p->get_commands()[j];
+			if (p->get_plug_help)
+				help = p->get_plug_help()[j];
+
+			sprintf(buf, "%s :     %s%s%s", src, cmd,
+					(help ? ": " : ""),
+					(help ? help : ""));
+			tmp = create_message(NULL, "PRIVMSG", buf);
+			send_msg(tmp);
+			free_message(tmp);
+		}
+	}
+
+	sprintf(buf, "%s : ", src);
+	tmp = create_message(NULL, "PRIVMSG", buf);
+	send_msg(tmp);
+	free_message(tmp);
 
 }
 
@@ -300,16 +354,17 @@ static void process_command(char *cmd, char *src, char *dest, char *msg)
 
 static void process_priv_message(struct irc_message *irc_msg)
 {
-	char *cmd, *dest, *msg;
+	char *cmd, *dest, *msg, *src;
 
 	dest = strtok(irc_msg->params, " ");
 	msg = strtok(NULL, "") + 1; // ignore ':' char
+	src = strtok(irc_msg->prefix + 1, "!");
 
 	if (*msg == *CMD_CHAR) {
 		cmd = strtok(msg, " ") + 1; // ignore CMD_CHAR char
 		msg = strtok(NULL, "");
 		debug("Command received: %s", cmd);
-		process_command(cmd, irc_msg->prefix + 1, dest, msg);
+		process_command(cmd, src, dest, msg);
 	}
 }
 
