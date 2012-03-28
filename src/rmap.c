@@ -9,18 +9,24 @@
 
 #define   RM_MAX_MAPS_PER_POOL	25
 #define   RM_MAX_POOLS		MAX_RESPONSE_MSGES - 2
-#define   RM_POOLS_CMD          "pools"
-#define   RM_RELOAD_MAPS_CMD    "reload-maps"
-#define   RM_RANDOM_MAP_CMD     "rm"
+
+static char RM_POOLS_CMD[] = "pools";
+static char RM_POOLS_HELP[] = "displays available map pools";
+
+static char RM_RANDOM_MAP_CMD[] = "rm";
+static char RM_RANDOM_MAP_HELP[] = "chooses a random map";
+
+static char RM_RELOAD_MAPS_CMD[] = "reload-maps";
+static char RM_RELOAD_MAPS_HELP[] = "reloads map pools from disk";
+
+static char PLUG_NAME[] = "random map pools";
+static char PLUG_DESCR[] = "chooses a random map from a pool";
 
 static int npools = 0;
 static struct pool **pools = NULL;
 static char **commands;
+static char **commands_help;
 static const int command_qty = 3;
-static char pools_cmd[] = RM_POOLS_CMD;
-static char reload_maps_cmd[] = RM_RELOAD_MAPS_CMD;
-static char random_map_cmd[] = RM_RANDOM_MAP_CMD;
-static char plug_name[] = "random map pools";
 
 char **get_commands()
 {
@@ -34,7 +40,17 @@ int get_command_qty()
 
 char *get_plug_name()
 {
-	return plug_name;
+	return PLUG_NAME;
+}
+
+char *get_plug_descr()
+{
+	return PLUG_DESCR;
+}
+
+char **get_plug_help()
+{
+	return commands_help;
 }
 
 /*
@@ -115,9 +131,14 @@ int plug_init()
 	int n, i;
 
 	commands = malloc(sizeof(*commands) * command_qty);
-	commands[0] = pools_cmd;
-	commands[1] = random_map_cmd;
-	commands[2] = reload_maps_cmd;
+	commands[0] = RM_POOLS_CMD;
+	commands[1] = RM_RANDOM_MAP_CMD;
+	commands[2] = RM_RELOAD_MAPS_CMD;
+
+	commands_help = malloc(sizeof(commands_help) * command_qty);
+	commands_help[0] = RM_POOLS_HELP;
+	commands_help[1] = RM_RANDOM_MAP_HELP;
+	commands_help[2] = RM_RELOAD_MAPS_HELP;
 
 	npools = 0;
 	pools = malloc(sizeof(*pools) * RM_MAX_POOLS);
@@ -193,6 +214,7 @@ int plug_close()
 	int i;
 
 	free(commands);
+	free(commands_help);
 
 	for (i = 0; i < npools; i++)
 		free_pool(pools[i]);
