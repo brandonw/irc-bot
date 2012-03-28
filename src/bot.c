@@ -271,8 +271,8 @@ static void print_help_msges(char *src, char *dest, char *msg)
 			if (p->get_plug_help)
 				help = p->get_plug_help()[j];
 
-			sprintf(buf, "%s :     %s%s%s", src, cmd,
-					(help ? ": " : ""),
+			sprintf(buf, "%s :     %s%s%s%s", src, CMD_CHAR, cmd,
+					(help ? " - " : ""),
 					(help ? help : ""));
 			tmp = create_message(NULL, "PRIVMSG", buf);
 			send_msg(tmp);
