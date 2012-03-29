@@ -240,20 +240,20 @@ int create_cmd_response(char *src, char *dest,
 
 		sprintf(buf, "%s", "Available map pools:");
 		responses[*count] =
-			create_plug_msg(channel, buf);
+			create_plug_msg(src, buf);
 		if (responses[*count])
 			(*count)++;
 
 		sprintf(buf, "%s", "All pools (don't specify a number)");
 		responses[*count] =
-			create_plug_msg(channel, buf);
+			create_plug_msg(src, buf);
 		if (responses[*count])
 			(*count)++;
 
 		for (i = 0; i < npools; i++) {
 			sprintf(buf, "%d. %s", i+1, pools[i]->name);
 			responses[*count] =
-				create_plug_msg(channel, buf);
+				create_plug_msg(src, buf);
 			if (responses[*count])
 				(*count)++;
 		}
@@ -263,7 +263,7 @@ int create_cmd_response(char *src, char *dest,
 
 		sprintf(buf, "%s", "Reloaded map pools");
 		responses[*count] =
-			create_plug_msg(channel, buf);
+			create_plug_msg(src, buf);
 		if (responses[*count])
 			(*count)++;
 	} else if (strcmp(cmd, RM_RANDOM_MAP_CMD) == 0) {
@@ -280,7 +280,7 @@ int create_cmd_response(char *src, char *dest,
 
 			sprintf(buf, "Map: %s",pools[pn]->maps[choice]);
 			responses[*count] =
-				create_plug_msg(channel, buf);
+				create_plug_msg(src, buf);
 			if (responses[*count])
 				(*count)++;
 		} else {
@@ -299,7 +299,7 @@ int create_cmd_response(char *src, char *dest,
 
 			sprintf(buf, "Map: %s", pools[i]->maps[choice]);
 			responses[*count] =
-				create_plug_msg(channel, buf);
+				create_plug_msg(src, buf);
 			if (responses[*count])
 				(*count)++;
 		}
