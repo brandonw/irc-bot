@@ -34,7 +34,7 @@ PLUGINS_SO = $(addprefix $(PLUG_SO_DIR)/,\
 # --------------------------------------------------------------------------
 
 .PHONY: all
-all: $(BIN_DIR)/$(BIN_NAME) irc-plugins
+all: $(BIN_DIR)/$(BIN_NAME) irc-plugins cscope.out
 
 $(BIN_DIR)/$(BIN_NAME): $(OBJS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -rdynamic $(PKG_GLIB) $^ -o $@ -ldl
