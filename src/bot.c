@@ -484,7 +484,7 @@ static struct irc_message *recv_msg()
 			log_info("Trying to reconnect...");
 			sockfd = connect_to_server();
 			if (sockfd == -1) {
-				log_info("Failed");
+				log_info("Failed: %s", strerror(errno));
 				return NULL;
 			} else
 				log_info("Succeeded!");
@@ -502,6 +502,7 @@ static struct irc_message *recv_msg()
 
 	retval = select(sockfd + 1, &rfds, NULL, NULL, &tv);
 	if (retval == -1) {
+		log_err("Error waiting for socket: %s", strerror(errno));
 		kill_bot();
 		return NULL;
 	} else if (!retval) {
