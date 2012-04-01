@@ -480,7 +480,9 @@ static struct irc_message *recv_msg()
 	struct irc_message *msg;
 
 	if (sockfd == -1) {
+		debug("sockfd is -1");
 		if (time(NULL) - last_activity > LAG_INTERVAL) {
+			debug("LAG_INTERVAL has been reached");
 			log_info("Trying to reconnect...");
 			sockfd = connect_to_server();
 			if (sockfd == -1) {
@@ -490,6 +492,7 @@ static struct irc_message *recv_msg()
 				log_info("Succeeded!");
 		}
 		else {
+			debug("LAG_INTERVAL not reached; sleeping...");
 			sleep(5);
 			return NULL;
 		}
@@ -500,6 +503,7 @@ static struct irc_message *recv_msg()
 	tv.tv_sec = 0;
 	tv.tv_usec = 500000;
 
+	debug("selecting on sockfd..");
 	retval = select(sockfd + 1, &rfds, NULL, NULL, &tv);
 	if (retval == -1) {
 		log_err("Error waiting for socket: %s", strerror(errno));
@@ -510,8 +514,10 @@ static struct irc_message *recv_msg()
 		time(&curr);
 
 		if (curr - last_activity > LAG_INTERVAL) {
+			debug("appear to have lost connection");
 			if (!waiting_for_ping) {
 				struct irc_message *ping_msg;
+				debug("sending ping..");
 				ping_msg = create_message(NULL, "PING",
 						":ping");
 				send_msg(ping_msg);
