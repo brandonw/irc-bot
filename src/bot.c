@@ -187,6 +187,19 @@ static int send_msg(struct irc_message *message)
 	return send(sockfd, buf, strlen(buf), 0);
 }
 
+int send_plug_msg(struct plug_msg *msg)
+{
+	char buf[IRC_BUF_LENGTH];
+	struct irc_message *tmp;
+
+	sprintf(buf, "%s :%s", msg->dest, msg->msg);
+	tmp = create_message(NULL, "PRIVMSG", buf);
+	send_msg(tmp);
+	free_message(tmp);
+
+	return 1;
+}
+
 static void send_join()
 {
 	struct irc_message *join_msg;
@@ -301,8 +314,6 @@ static void process_command(char *cmd, char *src, char *dest, char *msg)
 {
 	int num_of_responses, i;
 	struct plugin *p;
-	char buf[IRC_BUF_LENGTH];
-	struct irc_message *tmp;
 	struct plug_msg *responses[MAX_RESPONSE_MSGES];
 
 	if (!strcmp("help", cmd)) {
@@ -338,13 +349,36 @@ static void process_command(char *cmd, char *src, char *dest, char *msg)
 		if (num_of_responses > 0) {
 			int j;
 			for (j = 0; j < num_of_responses; j++) {
-				sprintf(buf, "%s :%s", responses[j]->dest,
-						responses[j]->msg);
+				send_plug_msg(responses[j]);
+				free_plug_msg(responses[j]);
+			}
+		}
+		return;
+	}
+}
 
-				tmp = create_message(NULL, "PRIVMSG",
-						buf);
-				send_msg(tmp);
-				free_message(tmp);
+static void process_noncommand(char *src, char *dest, char *msg)
+{
+	int num_of_responses, i;
+	struct plugin *p;
+	struct plug_msg *responses[MAX_RESPONSE_MSGES];
+
+	for (i = 0; i < nplugins; i++) {
+		p = &plugins[i];
+		debug("plug name: %s", p->get_plug_name());
+		if (!p->create_msg_response)
+			continue;
+
+		num_of_responses = 0;
+		if (p->create_msg_response(src, dest, msg, responses,
+					&num_of_responses)) {
+			return;
+		}
+
+		if (num_of_responses > 0) {
+			int j;
+			for (j = 0; j < num_of_responses; j++) {
+				send_plug_msg(responses[j]);
 				free_plug_msg(responses[j]);
 			}
 		}
@@ -365,6 +399,9 @@ static void process_priv_message(struct irc_message *irc_msg)
 		msg = strtok(NULL, "");
 		debug("Command received: %s", cmd);
 		process_command(cmd, src, dest, msg);
+	} else {
+		process_noncommand(src, dest, msg);
+
 	}
 }
 
