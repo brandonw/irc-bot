@@ -250,11 +250,6 @@ static void print_help_msges(char *src)
 	send_msg(tmp);
 	free_message(tmp);
 
-	sprintf(buf, "%s :=====================================", src);
-	tmp = create_message(NULL, "PRIVMSG", buf);
-	send_msg(tmp);
-	free_message(tmp);
-
 	for (i = 0; i < nplugins; i++) {
 		char *name = NULL, *descr = NULL;
 		p = &plugins[i];
