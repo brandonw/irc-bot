@@ -547,8 +547,10 @@ static struct irc_message *recv_msg()
 
 		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
 		if (bytes_read == 0) {
-			log_info("Connection closed.");
-			kill_bot();
+			// connection has been terminated
+			// likely due to ping timeout
+			sockfd = -1;
+			log_info("Connection terminated. Reconnecting..");
 			return NULL;
 		}
 
