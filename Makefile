@@ -1,6 +1,7 @@
 BIN_NAME = irc-bot
 
 PLUG_SRC += rmap.c
+PLUG_SRC += urlget.c
 # --------------------------------------------------------------------------
 
 BIN_DIR = bin
