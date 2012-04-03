@@ -17,11 +17,8 @@ struct plugin {
 	void *handle;
 	char **(*get_commands) ();
 	int (*get_command_qty) ();
-	int (*create_cmd_response) (char *src, char *dest,
-			char *cmd, char *msg, struct plug_msg **responses,
-			int *count);
-	int (*create_msg_response) (char *src, char *dest,
-			char *msg, struct plug_msg **responses, int *count);
+	int (*cmd_reply) (char *src, char *dest, char *cmd, char *msg);
+	int (*msg_reply) (char *src, char *dest, char *msg);
 	int (*plug_init) ();
 	int (*plug_close) ();
 	char *(*get_plug_name) ();
@@ -310,11 +307,10 @@ static void send_quit()
 	free_message(quit_msg);
 }
 
-static void process_command(char *cmd, char *src, char *dest, char *msg)
+static void process_pm_cmd(char *cmd, char *src, char *dest, char *msg)
 {
-	int num_of_responses, i;
+	int i;
 	struct plugin *p;
-	struct plug_msg *responses[MAX_RESPONSE_MSGES];
 
 	if (!strcmp("help", cmd)) {
 		print_help_msges(src);
@@ -333,56 +329,34 @@ static void process_command(char *cmd, char *src, char *dest, char *msg)
 		if (!plugin_accepts_command(p, cmd))
 			continue;
 
-		num_of_responses = 0;
-
-		if (!p->create_cmd_response) {
+		if (!p->cmd_reply) {
 			log_warn("%s plugin accepts command %s but does not"
-					"implement create_cmd_response",
+					"implement cmd_reply",
 					p->get_plug_name(), cmd);
 			return;
 		}
-		if (p->create_cmd_response(src, dest, cmd, msg, responses,
-					&num_of_responses)) {
+		if (p->cmd_reply(src, dest, cmd, msg)) {
 			return;
 		}
 
-		if (num_of_responses > 0) {
-			int j;
-			for (j = 0; j < num_of_responses; j++) {
-				send_plug_msg(responses[j]);
-				free_plug_msg(responses[j]);
-			}
-		}
 		return;
 	}
 }
 
-static void process_noncommand(char *src, char *dest, char *msg)
+static void process_pm_msg(char *src, char *dest, char *msg)
 {
-	int num_of_responses, i;
+	int i;
 	struct plugin *p;
-	struct plug_msg *responses[MAX_RESPONSE_MSGES];
 
 	for (i = 0; i < nplugins; i++) {
 		p = &plugins[i];
 		debug("plug name: %s", p->get_plug_name());
-		if (!p->create_msg_response)
+		if (!p->msg_reply)
 			continue;
 
-		num_of_responses = 0;
-		if (p->create_msg_response(src, dest, msg, responses,
-					&num_of_responses)) {
+		if (p->msg_reply(src, dest, msg)) {
 			return;
 		}
-
-		if (num_of_responses > 0) {
-			int j;
-			for (j = 0; j < num_of_responses; j++) {
-				send_plug_msg(responses[j]);
-				free_plug_msg(responses[j]);
-			}
-		}
-		return;
 	}
 }
 
@@ -398,9 +372,9 @@ static void process_priv_message(struct irc_message *irc_msg)
 		cmd = strtok(msg, " ") + 1; // ignore CMD_CHAR char
 		msg = strtok(NULL, "");
 		debug("Command received: %s", cmd);
-		process_command(cmd, src, dest, msg);
+		process_pm_cmd(cmd, src, dest, msg);
 	} else {
-		process_noncommand(src, dest, msg);
+		process_pm_msg(src, dest, msg);
 
 	}
 }
@@ -657,8 +631,8 @@ static void load_plugins()
 		p->handle = handle;
 		p->get_commands = dlsym(handle, "get_commands");
 		p->get_command_qty = dlsym(handle, "get_command_qty");
-		p->create_cmd_response = dlsym(handle, "create_cmd_response");
-		p->create_msg_response = dlsym(handle, "create_msg_response");
+		p->cmd_reply = dlsym(handle, "cmd_reply");
+		p->msg_reply = dlsym(handle, "msg_reply");
 		p->plug_init = dlsym(handle, "plug_init");
 		p->plug_close = dlsym(handle, "plug_close");
 		p->get_plug_name = dlsym(handle, "get_plug_name");
@@ -667,7 +641,7 @@ static void load_plugins()
 
 		/* only count this as a valid plugin if create_response,
 		 * get_commands, and get_command_qty were found */
-		if ((p->create_cmd_response || p->create_msg_response) &&
+		if ((p->cmd_reply || p->msg_reply) &&
 				p->get_commands &&
 				p->get_command_qty &&
 				p->plug_init &&

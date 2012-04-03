@@ -8,7 +8,7 @@
 #include "debug.h"
 
 #define   RM_MAX_MAPS_PER_POOL	25
-#define   RM_MAX_POOLS		MAX_RESPONSE_MSGES - 2
+#define   RM_MAX_POOLS		25
 
 static char RM_POOLS_CMD[] = "pools";
 static char RM_POOLS_HELP[] = "displays available map pools";
@@ -223,14 +223,11 @@ int plug_close()
 	return 0;
 }
 
-int create_cmd_response(char *src, char *dest,
-		char *cmd, char *msg, struct plug_msg **responses,
-		int *count)
+int cmd_reply(char *src, char *dest, char *cmd, char *msg)
 {
 	char buf[IRC_BUF_LENGTH];
+	struct plug_msg *tmp;
 	char *n;
-
-	*count = 0;
 
 	/* pool number (if specified) */
 	n = strtok(msg, " ");
@@ -239,33 +236,29 @@ int create_cmd_response(char *src, char *dest,
 		int i;
 
 		sprintf(buf, "%s", "Available map pools:");
-		responses[*count] =
-			create_plug_msg(src, buf);
-		if (responses[*count])
-			(*count)++;
+		tmp = create_plug_msg(src, buf);
+		send_plug_msg(tmp);
+		free_plug_msg(tmp);
 
 		sprintf(buf, "%s", "All pools (don't specify a number)");
-		responses[*count] =
-			create_plug_msg(src, buf);
-		if (responses[*count])
-			(*count)++;
+		tmp = create_plug_msg(src, buf);
+		send_plug_msg(tmp);
+		free_plug_msg(tmp);
 
 		for (i = 0; i < npools; i++) {
 			sprintf(buf, "%d. %s", i+1, pools[i]->name);
-			responses[*count] =
-				create_plug_msg(src, buf);
-			if (responses[*count])
-				(*count)++;
+			tmp = create_plug_msg(src, buf);
+			send_plug_msg(tmp);
+			free_plug_msg(tmp);
 		}
 	} else if (strcmp(cmd, RM_RELOAD_MAPS_CMD) == 0) {
 		plug_close();
 		plug_init();
 
 		sprintf(buf, "%s", "Reloaded map pools");
-		responses[*count] =
-			create_plug_msg(src, buf);
-		if (responses[*count])
-			(*count)++;
+		tmp = create_plug_msg(src, buf);
+		send_plug_msg(tmp);
+		free_plug_msg(tmp);
 	} else if (strcmp(cmd, RM_RANDOM_MAP_CMD) == 0) {
 		int pn, choice;
 
@@ -279,10 +272,9 @@ int create_cmd_response(char *src, char *dest,
 			choice = random() % (pools[pn]->nmaps);
 
 			sprintf(buf, "Map: %s",pools[pn]->maps[choice]);
-			responses[*count] =
-				create_plug_msg(src, buf);
-			if (responses[*count])
-				(*count)++;
+			tmp = create_plug_msg(src, buf);
+			send_plug_msg(tmp);
+			free_plug_msg(tmp);
 		} else {
 			/* pick a map from the union of all pools */
 			int totalmaps = 0, i;
@@ -298,10 +290,9 @@ int create_cmd_response(char *src, char *dest,
 			}
 
 			sprintf(buf, "Map: %s", pools[i]->maps[choice]);
-			responses[*count] =
-				create_plug_msg(src, buf);
-			if (responses[*count])
-				(*count)++;
+			tmp = create_plug_msg(src, buf);
+			send_plug_msg(tmp);
+			free_plug_msg(tmp);
 		}
 	}
 

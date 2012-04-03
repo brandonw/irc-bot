@@ -3,7 +3,6 @@
 
 #define   DEFAULT_PORT        	"6667"
 #define   IRC_BUF_LENGTH      	513
-#define   MAX_RESPONSE_MSGES  	10
 #define   MAX_PLUGINS         	50
 #define   LAG_INTERVAL          300
 #define   PING_WAIT_TIME        15
@@ -21,5 +20,6 @@ struct plug_msg *create_plug_msg(char *dest, char *msg);
 void free_plug_msg(struct plug_msg *msg);
 void kill_bot();
 void run_bot();
+int send_plug_msg(struct plug_msg *msg);
 
 #endif
