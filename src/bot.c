@@ -634,8 +634,6 @@ static void load_plugins()
 		p->get_plug_descr = dlsym(handle, "get_plug_descr");
 		p->get_plug_help = dlsym(handle, "get_plug_help");
 
-		/* only count this as a valid plugin if create_response,
-		 * get_commands, and get_command_qty were found */
 		if ((p->cmd_reply || p->msg_reply) &&
 				p->get_commands &&
 				p->get_command_qty &&
