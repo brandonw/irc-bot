@@ -85,8 +85,11 @@ struct irc_message *create_message(char *prefix, char *command, char *params)
 		msg_size += strlen(params);
 
 	if (msg_size >= IRC_BUF_LENGTH) {
-		log_err("Attempted to create a message with:\nprefix:%s\n"
-			"command:%s\nparams:%s\nwith a total size of %d",
+		log_err("Attempted to create a message with:\n"
+			"prefix:%s\n"
+			"command:%s\n"
+			"params:%s\n"
+			"with a total size of %d\n",
 			prefix,
 			command,
 			params,
@@ -162,10 +165,10 @@ static int send_msg(struct irc_message *message)
 	int idx = 0;
 
 	debug("\n%%Sending message--\n"
-			"%%prefix:  \"%s\"\n"
-			"%%command: \"%s\"\n"
-			"%%params:  \"%s\"",
-			message->prefix, message->command, message->params);
+	      "%%prefix:  \"%s\"\n"
+	      "%%command: \"%s\"\n"
+	      "%%params:  \"%s\"",
+	      message->prefix, message->command, message->params);
 
 	if (message->prefix) {
 		sprintf(buf + idx, "%s ", message->prefix);
@@ -192,8 +195,10 @@ int send_plug_msg(struct plug_msg *msg)
 
 	sprintf(buf, "%s :%s", msg->dest, msg->msg);
 	tmp = create_message(NULL, "PRIVMSG", buf);
-	send_msg(tmp);
-	free_message(tmp);
+	if (tmp) {
+		send_msg(tmp);
+		free_message(tmp);
+	}
 
 	return 1;
 }
@@ -583,11 +588,11 @@ static struct irc_message *recv_msg()
 	}
 
 	msg = create_message(prefix, command, params);
-	debug("\n%%Received message--\n"
-			"%%prefix:  \"%s\"\n"
-			"%%command: \"%s\"\n"
-			"%%params:  \"%s\"",
-			msg->prefix, msg->command, msg->params);
+	debug("%%Received message--\n"
+	      "%%prefix:  \"%s\"\n"
+	      "%%command: \"%s\"\n"
+	      "%%params:  \"%s\"",
+	      msg->prefix, msg->command, msg->params);
 
 	return msg;
 }
