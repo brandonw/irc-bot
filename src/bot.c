@@ -510,7 +510,6 @@ static struct irc_message *recv_msg()
 	tv.tv_sec = 0;
 	tv.tv_usec = 500000;
 
-	debug("selecting on sockfd..");
 	retval = select(sockfd + 1, &rfds, NULL, NULL, &tv);
 	if (retval == -1) {
 		log_err("Error waiting for socket: %s", strerror(errno));
@@ -661,6 +660,7 @@ void run_bot()
 	int i;
 	struct irc_message *inc_msg;
 
+	curl_global_init(CURL_GLOBAL_SSL);
 	load_plugins();
 
 	for (i = 0; i < nplugins; i++) {
@@ -690,4 +690,5 @@ void run_bot()
 		}
 		dlclose(plugins[i].handle);
 	}
+	curl_global_cleanup();
 }

@@ -11,9 +11,6 @@
 
 #define MAX_TITLE_LENGTH IRC_BUF_LENGTH - 50
 #define HTML_BUF_SIZE    1024
-#define CURL_INIT_FLAGS  (1<<0)
-#define CURL_URL_OPT 10002
-#define CURL_WRITEDATA_OPT 10001
 
 static char PLUG_NAME[] = "urlget";
 static char PLUG_DESCR[] = "Gets title from URLs in chat";
@@ -92,13 +89,13 @@ int msg_reply(char *src, char *dest, char *msg)
 		fclose(tmpf);
 		return -1;
 	}
-	if (curl_easy_setopt(handle, CURL_URL_OPT, link)) {
+	if (curl_easy_setopt(handle, CURLOPT_URL, link)) {
 		log_err("Error setting URL");
 		curl_easy_cleanup(handle);
 		fclose(tmpf);
 		return -1;
 	}
-	if (curl_easy_setopt(handle, CURL_WRITEDATA_OPT, tmpf)) {
+	if (curl_easy_setopt(handle, CURLOPT_WRITEDATA, tmpf)) {
 		log_err("Error setting tmpfile");
 		curl_easy_cleanup(handle);
 		fclose(tmpf);
