@@ -171,19 +171,19 @@ static int send_msg(struct irc_message *message)
 	      message->prefix, message->command, message->params);
 
 	if (message->prefix) {
-		sprintf(buf + idx, "%s ", message->prefix);
+		snprintf(buf + idx, IRC_BUF_LENGTH, "%s ", message->prefix);
 		idx += strlen(message->prefix) + 1;
 	}
 
-	sprintf(buf + idx, "%s", message->command);
+	snprintf(buf + idx, IRC_BUF_LENGTH, "%s", message->command);
 	idx += strlen(message->command);
 
 	if (message->params) {
-		sprintf(buf + idx, " %s", message->params);
+		snprintf(buf + idx, IRC_BUF_LENGTH, " %s", message->params);
 		idx += strlen(message->params) + 1;
 	}
 
-	sprintf(buf + idx, "\r\n");
+	snprintf(buf + idx, IRC_BUF_LENGTH, "\r\n");
 
 	return send(sockfd, buf, strlen(buf), 0);
 }
@@ -193,7 +193,7 @@ int send_plug_msg(struct plug_msg *msg)
 	char buf[IRC_BUF_LENGTH];
 	struct irc_message *tmp;
 
-	sprintf(buf, "%s :%s", msg->dest, msg->msg);
+	snprintf(buf, IRC_BUF_LENGTH, "%s :%s", msg->dest, msg->msg);
 	tmp = create_message(NULL, "PRIVMSG", buf);
 	if (tmp) {
 		send_msg(tmp);
@@ -226,7 +226,7 @@ static void send_nick()
 	send_msg(id_msg);
 	free_message(id_msg);
 
-	sprintf(buf, "USER %s %s 8 * : %s", nick, nick, nick);
+	snprintf(buf, IRC_BUF_LENGTH, "USER %s %s 8 * : %s", nick, nick, nick);
 	id_msg = create_message(NULL, "USER", buf);
 	send_msg(id_msg);
 	free_message(id_msg);
@@ -251,7 +251,7 @@ static void print_help_msges(char *src)
 	struct plugin *p;
 	struct irc_message *tmp;
 
-	sprintf(buf, "%s :The following commands are available:", src);
+	snprintf(buf, IRC_BUF_LENGTH, "%s :The following commands are available:", src);
 	tmp = create_message(NULL, "PRIVMSG", buf);
 	send_msg(tmp);
 	free_message(tmp);
@@ -260,7 +260,7 @@ static void print_help_msges(char *src)
 		char *name = NULL, *descr = NULL;
 		p = &plugins[i];
 
-		sprintf(buf, "%s : ", src);
+		snprintf(buf, IRC_BUF_LENGTH, "%s : ", src);
 		tmp = create_message(NULL, "PRIVMSG", buf);
 		send_msg(tmp);
 		free_message(tmp);
@@ -269,7 +269,7 @@ static void print_help_msges(char *src)
 		if (p->get_plug_descr)
 			descr = p->get_plug_descr();
 
-		sprintf(buf, "%s :%s%s%s", src, name,
+		snprintf(buf, IRC_BUF_LENGTH, "%s :%s%s%s", src, name,
 				(descr ? " - " : ""),
 				(descr ? descr : ""));
 		tmp = create_message(NULL, "PRIVMSG", buf);
@@ -282,7 +282,8 @@ static void print_help_msges(char *src)
 			if (p->get_plug_help)
 				help = p->get_plug_help()[j];
 
-			sprintf(buf, "%s :     %s%s%s%s", src, CMD_CHAR, cmd,
+			snprintf(buf, IRC_BUF_LENGTH, "%s :     %s%s%s%s",
+					src, CMD_CHAR, cmd,
 					(help ? " - " : ""),
 					(help ? help : ""));
 			tmp = create_message(NULL, "PRIVMSG", buf);
@@ -291,7 +292,7 @@ static void print_help_msges(char *src)
 		}
 	}
 
-	sprintf(buf, "%s : ", src);
+	snprintf(buf, IRC_BUF_LENGTH, "%s : ", src);
 	tmp = create_message(NULL, "PRIVMSG", buf);
 	send_msg(tmp);
 	free_message(tmp);
