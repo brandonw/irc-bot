@@ -53,16 +53,6 @@ char **get_plug_help()
 	return commands_help;
 }
 
-/*
- * Represents a map pool.
- *
- * name is the name of the pool (e.g. the tournament or league
- * of the pool's origin).
- *
- * maps is an array of maps that exist in the pool.
- *
- * nmaps is the number of maps in the pool.
- */
 struct pool
 {
 	char *name;
@@ -70,17 +60,6 @@ struct pool
 	int nmaps;
 };
 
-/*
- * Creates and initializes a pool struct
- *
- * name is the name of the map pool. The pointer must point to a
- * memory location that has already been allocated.
- *
- * maps is an array of maps contained in this pool. Each map
- * must already have been allocated.
- *
- * nmaps is the number of maps in the pool.
- */
 struct pool *create_pool(char *name, char **maps, int nmaps)
 {
 	struct pool *p;
@@ -98,9 +77,6 @@ struct pool *create_pool(char *name, char **maps, int nmaps)
 	return p;
 }
 
-/*
- * Frees a map pool and all associated memory.
- */
 void free_pool(struct pool *p)
 {
 	int i;
@@ -265,7 +241,7 @@ int cmd_reply(char *src, char *dest, char *cmd, char *msg)
 		if (n != NULL) {
 			/* pick a map from the specified pool */
 			pn = atoi(n);
-			if (pn == 0 || pn > npools)
+			if (pn < 1 || pn > npools)
 				return -1;
 			pn--;
 
