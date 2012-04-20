@@ -10,6 +10,7 @@
 #include <time.h>
 #include <sys/select.h>
 #include <errno.h>
+#include <curl/curl.h>
 #include "bot.h"
 #include "debug.h"
 
