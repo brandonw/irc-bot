@@ -14,6 +14,8 @@
 #include "bot.h"
 #include "debug.h"
 
+#define RECV_BUF_LENGTH IRC_BUF_LENGTH * 5
+
 struct plugin {
 	void *handle;
 	char **(*get_commands) ();
@@ -37,6 +39,9 @@ static struct plugin plugins[MAX_PLUGINS];
 static int nplugins = 0, keep_alive = 1, sent_nick = 0, joined = 0,
 	   waiting_for_ping = 0, sockfd= -1;
 static time_t last_activity = 0;
+static char recv_buf[RECV_BUF_LENGTH - 1];
+static ssize_t recv_buf_size = 0;
+static char *recv_buf_pos = NULL;
 
 void reset()
 {
@@ -483,14 +488,11 @@ static int connect_to_server()
 	return fd;
 }
 
-static struct irc_message *recv_msg()
+static int fill_recv_buf()
 {
-	char buf[IRC_BUF_LENGTH];
-	int bytes_rcved = 0, retval = 0;
-	char *prefix, *command, *params, *tok;
+	int retval = 0;
 	fd_set rfds;
 	struct timeval tv;
-	struct irc_message *msg;
 
 	if (sockfd == -1) {
 		debug("sockfd is -1");
@@ -500,14 +502,14 @@ static struct irc_message *recv_msg()
 			sockfd = connect_to_server();
 			if (sockfd == -1) {
 				log_info("Failed: %s", strerror(errno));
-				return NULL;
+				return -1;
 			} else
 				log_info("Succeeded!");
 		}
 		else {
 			debug("LAG_INTERVAL not reached; sleeping...");
 			sleep(5);
-			return NULL;
+			return -1;
 		}
 	}
 
@@ -519,8 +521,9 @@ static struct irc_message *recv_msg()
 	retval = select(sockfd + 1, &rfds, NULL, NULL, &tv);
 	if (retval == -1) {
 		log_err("Error waiting for socket: %s", strerror(errno));
-		kill_bot();
-		return NULL;
+		close(sockfd);
+		sockfd = -1;
+		return -1;
 	} else if (!retval) {
 		time_t curr;
 		time(&curr);
@@ -545,36 +548,75 @@ static struct irc_message *recv_msg()
 				reset();
 			}
 		}
-		return NULL;
+		return -1;
 	}
 
-	do {
-		int bytes_read;
+	recv_buf_size = recv(sockfd, recv_buf, RECV_BUF_LENGTH - 1, 0);
+	if (recv_buf_size == 0) {
+		// connection has been terminated
+		// likely due to ping timeout
+		sockfd = -1;
+		log_info("Connection terminated. Reconnecting..");
+		return -1;
+	} else if (recv_buf_size == -1) {
+		log_err("Error receiving packets: %s",
+				strerror(errno));
+		kill_bot();
+		return -1;
+	}
 
-		bytes_read = recv(sockfd, buf + bytes_rcved, 1, 0);
-		if (bytes_read == 0) {
-			// connection has been terminated
-			// likely due to ping timeout
-			sockfd = -1;
-			log_info("Connection terminated. Reconnecting..");
-			return NULL;
-		}
+	recv_buf[recv_buf_size] = '\0';
+	recv_buf_pos = recv_buf;
 
-		if (bytes_read == -1) {
-			log_err("Error receiving packets: %s",
-					strerror(errno));
-			kill_bot();
-			return NULL;
-		}
-
-		bytes_rcved += bytes_read;
-	} while (buf[bytes_rcved - 1] != '\n');
-
-	buf[bytes_rcved] = '\0';
 	time(&last_activity);
 	waiting_for_ping = 0;
+	return 0;
+}
 
-	prefix = command = params = NULL;
+// copies string starting at ptr until it reaches \n or \0 into buf
+// returns  int of index of final character copied
+// assumes buf is always large enough to hold entire line
+// returns -1 if n was reached before finding \n or \0
+static int copy_into(char *ptr, char *buf, size_t n)
+{
+	size_t i = 0;
+
+	do {
+		buf[i] = ptr[i];
+		i++;
+	} while (ptr[i-1] != '\n' && ptr[i-1] != '\0' && i < n);
+
+	if (ptr[i-1] == '\n' || ptr[i-1] == '\0')
+		return i-1;
+	else
+		return -1;
+}
+
+static struct irc_message *recv_msg()
+{
+	char buf[IRC_BUF_LENGTH];
+	char *prefix = NULL, *command = NULL, *params = NULL, *tok;
+	struct irc_message *irc_msg;
+	int i, bo = 0;
+
+	do
+	{
+		if (*recv_buf_pos == '\0' && fill_recv_buf())
+			return NULL;
+
+		i = copy_into(recv_buf_pos, buf + bo, IRC_BUF_LENGTH - bo);
+		if (i == -1) {
+			log_err("Message received that exceeds IRC message "
+					"length [%d].", IRC_BUF_LENGTH);
+			return NULL;
+
+		}
+		recv_buf_pos += i;
+		bo += i;
+	} while (buf[bo] != '\n');
+
+	recv_buf_pos++;
+	buf[bo+1] = '\0';
 
 	tok = strtok(buf, " ");
 	if (tok[0] != ':') {
@@ -588,14 +630,14 @@ static struct irc_message *recv_msg()
 		params = tok;
 	}
 
-	msg = create_message(prefix, command, params);
+	irc_msg = create_message(prefix, command, params);
 	debug("%%Received message--\n"
 	      "%%prefix:  \"%s\"\n"
 	      "%%command: \"%s\"\n"
 	      "%%params:  \"%s\"",
-	      msg->prefix, msg->command, msg->params);
+	      irc_msg->prefix, irc_msg->command, irc_msg->params);
 
-	return msg;
+	return irc_msg;
 }
 
 static void load_plugins()
@@ -674,6 +716,8 @@ void run_bot()
 			plugins[i].plug_init();
 	}
 
+	recv_buf[0] = '\0';
+	recv_buf_pos = &recv_buf[0];
 	sockfd = connect_to_server();
 
 	while (keep_alive) {

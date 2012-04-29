@@ -2,7 +2,7 @@
 #define BOT_H
 
 #define   DEFAULT_PORT        	"6667"
-#define   IRC_BUF_LENGTH      	513
+#define   IRC_BUF_LENGTH      	512
 #define   MAX_PLUGINS         	50
 #define   LAG_INTERVAL          300
 #define   PING_WAIT_TIME        15
