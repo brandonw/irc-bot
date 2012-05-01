@@ -35,7 +35,7 @@ PLUGINS_SO = $(addprefix $(PLUG_SO_DIR)/,\
 # --------------------------------------------------------------------------
 
 .PHONY: all
-all: $(BIN_DIR)/$(BIN_NAME) irc-plugins cscope.out
+all: $(BIN_DIR)/$(BIN_NAME) irc-plugins cscope.out tags
 
 $(BIN_DIR)/$(BIN_NAME): $(OBJS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -rdynamic $^ -o $@ -ldl -lcurl
@@ -65,7 +65,7 @@ $(PLUG_SO_DIR):
 
 .PHONY: clean
 clean :
-	$(RM) -r $(BIN_DIR) $(OBJ_DIR) cscope.out
+	$(RM) -r $(BIN_DIR) $(OBJ_DIR) cscope.out tags
 
 .PHONY: debug
 debug: CFLAGS += -g -O0 -DDEBUG
@@ -73,3 +73,5 @@ debug: all
 
 cscope.out: $(SRC) $(PLUG_SRC)
 	cscope -R -b
+tags: $(SRC) $(PLUG_SRC)
+	ctags -R
