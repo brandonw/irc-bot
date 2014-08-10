@@ -395,7 +395,10 @@ static void process_priv_message(struct irc_message *irc_msg)
 	char *cmd, *dest, *msg, *src;
 
 	dest = strtok(irc_msg->params, " ");
-	msg = strtok(NULL, "") + 1; // ignore ':' char
+	msg = strtok(NULL, "");
+	if (*msg == ':') { // ignore irc message : prefix
+		msg = msg + 1;
+	}
 	src = strtok(irc_msg->prefix + 1, "!");
 
 	if (*msg == *CMD_CHAR) {
