@@ -84,8 +84,11 @@ struct irc_message *create_message(char *prefix, char *command, char *params)
 	/* check for total size of potential message */
 	if (prefix)
 		msg_size += strlen(prefix);
-	if (command)
-		msg_size += strlen(command);
+	if (!command) {
+		log_err("Attempted to create a message with no command.\n");
+		return NULL;
+	}
+	msg_size += strlen(command);
 	if (params)
 		msg_size += strlen(params);
 
