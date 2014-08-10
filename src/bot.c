@@ -213,8 +213,10 @@ static void send_join()
 	struct irc_message *join_msg;
 	log_info("Sending JOIN message.");
 	join_msg = create_message(NULL, "JOIN", channel);
-	send_msg(join_msg);
-	free_message(join_msg);
+	if (join_msg) {
+		send_msg(join_msg);
+		free_message(join_msg);
+	}
 
 	joined = 1;
 }
@@ -228,13 +230,17 @@ static void send_nick()
 			"sending NICK and USER information.");
 
 	id_msg = create_message(NULL, "NICK", nick);
-	send_msg(id_msg);
-	free_message(id_msg);
+	if (id_msg) {
+		send_msg(id_msg);
+		free_message(id_msg);
+	}
 
 	snprintf(buf, IRC_BUF_LENGTH, "USER %s %s 8 * : %s", nick, nick, nick);
 	id_msg = create_message(NULL, "USER", buf);
-	send_msg(id_msg);
-	free_message(id_msg);
+	if (id_msg) {
+		send_msg(id_msg);
+		free_message(id_msg);
+	}
 
 	sent_nick = 1;
 }
@@ -245,8 +251,10 @@ static void send_ping(char *ping)
 
 	log_info("Received PING, sending PONG.");
 	pong_msg = create_message(NULL, "PONG", ping);
-	send_msg(pong_msg);
-	free_message(pong_msg);
+	if (pong_msg) {
+		send_msg(pong_msg);
+		free_message(pong_msg);
+	}
 }
 
 static void print_help_msges(char *src)
@@ -258,8 +266,10 @@ static void print_help_msges(char *src)
 
 	snprintf(buf, IRC_BUF_LENGTH, "%s :The following commands are available:", src);
 	tmp = create_message(NULL, "PRIVMSG", buf);
-	send_msg(tmp);
-	free_message(tmp);
+	if (tmp) {
+		send_msg(tmp);
+		free_message(tmp);
+	}
 
 	for (i = 0; i < nplugins; i++) {
 		char *name = NULL, *descr = NULL;
@@ -267,8 +277,10 @@ static void print_help_msges(char *src)
 
 		snprintf(buf, IRC_BUF_LENGTH, "%s : ", src);
 		tmp = create_message(NULL, "PRIVMSG", buf);
-		send_msg(tmp);
-		free_message(tmp);
+		if (tmp) {
+			send_msg(tmp);
+			free_message(tmp);
+		}
 
 		name = p->get_plug_name();
 		if (p->get_plug_descr)
@@ -278,8 +290,10 @@ static void print_help_msges(char *src)
 				(descr ? " - " : ""),
 				(descr ? descr : ""));
 		tmp = create_message(NULL, "PRIVMSG", buf);
-		send_msg(tmp);
-		free_message(tmp);
+		if (tmp) {
+			send_msg(tmp);
+			free_message(tmp);
+		}
 
 		for (j = 0; j < p->get_command_qty(); j++) {
 			char *cmd = NULL, *help = NULL;
@@ -292,15 +306,19 @@ static void print_help_msges(char *src)
 					(help ? " - " : ""),
 					(help ? help : ""));
 			tmp = create_message(NULL, "PRIVMSG", buf);
-			send_msg(tmp);
-			free_message(tmp);
+			if (tmp) {
+				send_msg(tmp);
+				free_message(tmp);
+			}
 		}
 	}
 
 	snprintf(buf, IRC_BUF_LENGTH, "%s : ", src);
 	tmp = create_message(NULL, "PRIVMSG", buf);
-	send_msg(tmp);
-	free_message(tmp);
+	if (tmp) {
+		send_msg(tmp);
+		free_message(tmp);
+	}
 
 }
 
@@ -310,8 +328,10 @@ static void send_quit()
 	log_info("Received `!quit', quitting...");
 	kill_bot();
 	quit_msg = create_message(NULL, "QUIT", NULL);
-	send_msg(quit_msg);
-	free_message(quit_msg);
+	if (quit_msg) {
+		send_msg(quit_msg);
+		free_message(quit_msg);
+	}
 }
 
 static void process_pm_cmd(char *cmd, char *src, char *dest, char *msg)
