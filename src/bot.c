@@ -388,7 +388,7 @@ static void process_priv_message(struct irc_message *irc_msg)
 
 static void process_message(struct irc_message *msg)
 {
-	if (!joined && !strcmp("MODE", msg->command)) {
+	if (!joined && !strcmp("001", msg->command)) {
 		send_join();
 		return;
 	} else if (!sent_nick && !strcmp("NOTICE", msg->command)) {
